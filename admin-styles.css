@@ -1,0 +1,204 @@
+/* Admin Specific Styles */
+
+.hidden {
+    display: none !important;
+}
+
+/* Login Screen */
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--warm-light-gray);
+}
+
+.login-card {
+    background-color: var(--white);
+    padding: 3rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    max-width: 400px;
+    width: 100%;
+    margin: 1rem;
+}
+
+.login-card h1 {
+    color: var(--deep-navy);
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.error-message {
+    color: #d32f2f;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.success-message {
+    color: #388e3c;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+/* Admin Dashboard */
+.logout-btn {
+    background-color: var(--muted-teak);
+    color: var(--white);
+    padding: 0.5rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.logout-btn:hover {
+    background-color: var(--deep-navy);
+}
+
+.admin-container {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+}
+
+/* Tabs */
+.admin-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid var(--warm-light-gray);
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--charcoal);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    margin-bottom: -2px;
+}
+
+.tab-btn:hover {
+    color: var(--deep-navy);
+}
+
+.tab-btn.active {
+    color: var(--deep-navy);
+    border-bottom-color: var(--soft-gold);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Form Elements */
+.form-group small {
+    display: block;
+    margin-top: 0.5rem;
+    color: var(--muted-teak);
+    font-size: 0.85rem;
+}
+
+#urlPreview {
+    font-weight: 600;
+    color: var(--deep-navy);
+}
+
+/* Article Management */
+.article-item {
+    border: 1px solid var(--warm-light-gray);
+    border-radius: 4px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    background-color: var(--white);
+}
+
+.article-item h3 {
+    color: var(--deep-navy);
+    margin-bottom: 0.5rem;
+    text-align: left;
+}
+
+.article-item .article-url {
+    color: var(--muted-teak);
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.article-item .article-excerpt {
+    color: var(--charcoal);
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+.article-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-view {
+    background-color: var(--muted-teak);
+    color: var(--white);
+}
+
+.btn-view:hover {
+    background-color: var(--deep-navy);
+}
+
+.btn-delete {
+    background-color: #d32f2f;
+    color: var(--white);
+}
+
+.btn-delete:hover {
+    background-color: #b71c1c;
+}
+
+.no-articles {
+    text-align: center;
+    color: var(--charcoal);
+    padding: 2rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .login-card {
+        padding: 2rem;
+    }
+
+    .admin-tabs {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .tab-btn {
+        padding: 0.75rem 1rem;
+        text-align: left;
+    }
+
+    .article-actions {
+        flex-direction: column;
+    }
+}

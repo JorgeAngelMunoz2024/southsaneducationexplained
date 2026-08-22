@@ -1,0 +1,6 @@
+Deep navy: #1F3A5F - headings, navigation, buttons
+muted teak: #4F7C7A - accents, lins, section highlights
+warm light gray: #F4F3F0 - page backgrounds
+white #FFFFFF - artcle cards/content areas 
+charcoal #2B2B2B - body text
+soft gold: #C9A85C - Very limited accent for important callouts

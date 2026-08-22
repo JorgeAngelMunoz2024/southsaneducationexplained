@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - South San Education</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin-styles.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-card">
+            <h1>Admin Login</h1>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="submit-btn">Login</button>
+                <p id="loginError" class="error-message"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" class="hidden">
+        <header>
+            <nav class="navbar">
+                <div class="nav-container">
+                    <div class="site-title">South San Education - Admin</div>
+                    <button id="logoutBtn" class="logout-btn">Logout</button>
+                </div>
+            </nav>
+        </header>
+
+        <main>
+            <div class="admin-container">
+                <div class="admin-tabs">
+                    <button class="tab-btn active" data-tab="create">Create Article</button>
+                    <button class="tab-btn" data-tab="manage">Manage Articles</button>
+                </div>
+
+                <!-- Create Article Tab -->
+                <div id="createTab" class="tab-content active">
+                    <article class="content-card">
+                        <h2>Create New Article</h2>
+                        <form id="articleForm">
+                            <div class="form-group">
+                                <label for="articleTitle">Article Title</label>
+                                <input type="text" id="articleTitle" name="title" required>
+                                <small>URL will be: <span id="urlPreview">southsanexplained/articles/</span></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="articleMeta">Published Date (optional)</label>
+                                <input type="text" id="articleMeta" name="meta" placeholder="e.g., August 2026">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="articleExcerpt">Excerpt/Summary</label>
+                                <textarea id="articleExcerpt" name="excerpt" rows="3" required placeholder="Short summary for article listing"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="articleContent">Article Content (HTML supported)</label>
+                                <textarea id="articleContent" name="content" rows="15" required placeholder="Write your article content here. You can use HTML tags like <h2>, <p>, <ul>, etc."></textarea>
+                            </div>
+
+                            <button type="submit" class="submit-btn">Publish Article</button>
+                            <p id="formMessage" class="success-message"></p>
+                        </form>
+                    </article>
+                </div>
+
+                <!-- Manage Articles Tab -->
+                <div id="manageTab" class="tab-content">
+                    <article class="content-card">
+                        <h2>Manage Articles</h2>
+                        <div id="articlesList"></div>
+                    </article>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
