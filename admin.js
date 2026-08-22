@@ -173,9 +173,14 @@ function generateArticleHTML(article) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>${article.title} - South San Education Explained</title>
-    <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Ensure proper layout even if CSS fails to load */
+        body { min-height: 100vh; display: flex; flex-direction: column; }
+        main { flex: 1; }
+    </style>
 </head>
 <body>
     <header>
@@ -183,10 +188,10 @@ function generateArticleHTML(article) {
             <div class="nav-container">
                 <div class="site-title">South San Education</div>
                 <ul class="nav-menu">
-                    <li><a href="./index.html">Home</a></li>
-                    <li><a href="./articles.html" class="active">Articles</a></li>
-                    <li><a href="./about.html">About</a></li>
-                    <li><a href="./contact.html">Contact</a></li>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="articles.html" class="active">Articles</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="contact.html">Contact</a></li>
                 </ul>
             </div>
         </nav>
@@ -200,7 +205,7 @@ function generateArticleHTML(article) {
                 ${article.content}
             </div>
             <div style="margin-top: 3rem; text-align: center;">
-                <a href="./articles.html" style="color: var(--muted-teak); font-weight: 600;">← Back to Articles</a>
+                <a href="articles.html" style="color: var(--muted-teak); font-weight: 600;">← Back to Articles</a>
             </div>
         </article>
     </main>
@@ -234,8 +239,12 @@ async function viewArticle(slug) {
         // Fetch CSS content to inline it for blob preview
         let cssContent = '';
         try {
-            const response = await fetch('styles.css');
-            cssContent = await response.text();
+            const response = await fetch('styles.css', { cache: 'no-cache' });
+            if (response.ok) {
+                cssContent = await response.text();
+            } else {
+                console.error('Failed to fetch CSS:', response.status);
+            }
         } catch (e) {
             console.error('Failed to load CSS:', e);
         }
@@ -245,11 +254,9 @@ async function viewArticle(slug) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>${article.title} - South San Education Explained</title>
-    <style>
-        ${cssContent}
-    </style>
+    ${cssContent ? `<style>${cssContent}</style>` : '<link rel="stylesheet" href="styles.css">'}
 </head>
 <body>
     <header>
@@ -257,7 +264,7 @@ async function viewArticle(slug) {
             <div class="nav-container">
                 <div class="site-title">South San Education - Preview</div>
                 <ul class="nav-menu">
-                    <li><a href="#" onclick="window.close()">Close Preview</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Close Preview</a></li>
                 </ul>
             </div>
         </nav>
@@ -279,9 +286,16 @@ async function viewArticle(slug) {
 </body>
 </html>`;
         
-        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
         const url = window.URL.createObjectURL(blob);
-        window.open(url, '_blank');
+        const win = window.open(url, '_blank');
+        
+        // Clean up blob URL after window opens
+        if (win) {
+            win.addEventListener('load', () => {
+                setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+            });
+        }
     }
 }
 

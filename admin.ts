@@ -195,9 +195,14 @@ function generateArticleHTML(article: Article): string {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>${article.title} - South San Education Explained</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Ensure proper layout even if CSS fails to load */
+        body { min-height: 100vh; display: flex; flex-direction: column; }
+        main { flex: 1; }
+    </style>
 </head>
 <body>
     <header>
@@ -257,16 +262,72 @@ function downloadArticleById(slug: string): void {
     }
 }
 
-// View article (opens in new tab)
-function viewArticle(slug: string): void {
+// View article (opens in new tab with inlined CSS for preview)
+async function viewArticle(slug: string): Promise<void> {
     const articles: Article[] = JSON.parse(localStorage.getItem('articles') || '[]');
     const article = articles.find(a => a.slug === slug);
     
     if (article) {
-        const htmlContent = generateArticleHTML(article);
-        const blob = new Blob([htmlContent], { type: 'text/html' });
+        // Fetch CSS content to inline it for blob preview
+        let cssContent = '';
+        try {
+            const response = await fetch('styles.css', { cache: 'no-cache' });
+            if (response.ok) {
+                cssContent = await response.text();
+            } else {
+                console.error('Failed to fetch CSS:', response.status);
+            }
+        } catch (e) {
+            console.error('Failed to load CSS:', e);
+        }
+        
+        // Generate preview HTML with inlined CSS
+        const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>${article.title} - South San Education Explained</title>
+    ${cssContent ? `<style>${cssContent}</style>` : '<link rel="stylesheet" href="styles.css">'}
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="site-title">South San Education - Preview</div>
+                <ul class="nav-menu">
+                    <li><a href="#" onclick="window.close(); return false;">Close Preview</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <article class="content-card">
+            <h1>${article.title}</h1>
+            <p class="article-meta">Published: ${article.meta}</p>
+            <div class="article-content">
+                ${article.content}
+            </div>
+        </article>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 South San Education Explained. All rights reserved.</p>
+    </footer>
+</body>
+</html>`;
+        
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
         const url = window.URL.createObjectURL(blob);
-        window.open(url, '_blank');
+        const win = window.open(url, '_blank');
+        
+        // Clean up blob URL after window opens
+        if (win) {
+            win.addEventListener('load', () => {
+                setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+            });
+        }
     }
 }
 
