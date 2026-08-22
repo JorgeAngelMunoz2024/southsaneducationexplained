@@ -26,12 +26,16 @@ async function viewArticleFromStorage(slug) {
     if (article) {
         // Fetch CSS content to inline it for blob preview
         let cssContent = '';
+        let cssLoaded = false;
+        
         try {
             const response = await fetch('styles.css', { cache: 'no-cache' });
             if (response.ok) {
                 cssContent = await response.text();
+                cssLoaded = true;
+                console.log('CSS loaded successfully, length:', cssContent.length);
             } else {
-                console.error('Failed to fetch CSS:', response.status);
+                console.error('Failed to fetch CSS, status:', response.status);
             }
         } catch (e) {
             console.error('Failed to load CSS:', e);
@@ -44,7 +48,7 @@ async function viewArticleFromStorage(slug) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>${article.title} - South San Education Explained</title>
-    ${cssContent ? `<style>${cssContent}</style>` : '<link rel="stylesheet" href="styles.css">'}
+    ${cssLoaded ? `<style>${cssContent}</style>` : '<link rel="stylesheet" href="styles.css">'}
 </head>
 <body>
     <header>
@@ -77,6 +81,7 @@ async function viewArticleFromStorage(slug) {
     <footer>
         <p>&copy; 2026 South San Education Explained. All rights reserved.</p>
     </footer>
+    ${!cssLoaded ? '<script>console.error("CSS failed to load inline. Check browser console.");</script>' : ''}
 </body>
 </html>`;
         
@@ -87,9 +92,7 @@ async function viewArticleFromStorage(slug) {
         
         // Clean up blob URL after window opens
         if (win) {
-            win.addEventListener('load', () => {
-                setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-            });
+            setTimeout(() => window.URL.revokeObjectURL(url), 2000);
         }
     } else {
         alert('Article not found');
