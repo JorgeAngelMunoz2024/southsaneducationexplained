@@ -75,7 +75,11 @@ tabBtns.forEach(btn => {
 // Generate URL slug from title
 articleTitle.addEventListener('input', (e) => {
     const slug = generateSlug(e.target.value);
-    urlPreview.textContent = `southsanexplained/articles/${slug}`;
+    if (slug) {
+        urlPreview.textContent = `${slug}.html`;
+    } else {
+        urlPreview.textContent = '(auto-generated from title)';
+    }
 });
 
 function generateSlug(text) {
@@ -83,8 +87,9 @@ function generateSlug(text) {
         .toLowerCase()
         .trim()
         .replace(/[^\w\s-]/g, '') // Remove special characters
-        .replace(/\s+/g, '') // Remove spaces
-        .replace(/-+/g, '-'); // Replace multiple hyphens with single hyphen
+        .replace(/\s+/g, '-') // Replace spaces with hyphens
+        .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+        .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
 }
 
 // Article form submission
@@ -124,7 +129,7 @@ articleForm.addEventListener('submit', (e) => {
     
     // Reset form
     articleForm.reset();
-    urlPreview.textContent = 'southsanexplained/articles/';
+    urlPreview.textContent = '(auto-generated from title)';
     
     // Clear message after 10 seconds
     setTimeout(() => {

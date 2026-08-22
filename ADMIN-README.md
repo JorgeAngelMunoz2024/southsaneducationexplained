@@ -21,17 +21,27 @@ The admin panel is accessible at: **`/admin.html`**
 
 When you create an article:
 1. Enter the article title (e.g., "Check This Out")
-2. The URL slug is automatically generated (e.g., "checkthisout")
+2. The URL slug is automatically generated (e.g., "check-this-out")
 3. Add publish date, excerpt, and content
 4. Click "Publish Article"
-5. **Download the generated HTML file**
+5. **Download the generated HTML file** (e.g., `check-this-out.html`)
 6. Upload the HTML file to your GitHub repository root directory
+
+**Note:** When you preview an article, it opens with a temporary blob URL (e.g., `blob:http://...`). This is normal! The actual URL on your deployed site will be clean and use the article slug.
 
 ### 3. Article URLs
 
 Articles will be accessible at:
 - `southsanexplained/[slug].html`
-- Example: `southsanexplained/checkthisout.html`
+- Example: `southsanexplained/check-this-out.html` for "Check This Out"
+- Example: `southsanexplained/enrollment-guide.html` for "Enrollment Guide"
+
+**URL Slug Rules:**
+- Spaces become hyphens (-)
+- All lowercase
+- Special characters removed
+- "Hello World!" → "hello-world"
+- "2024 Guide" → "2024-guide"
 
 ### 4. Managing Articles
 
