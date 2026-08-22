@@ -123,12 +123,15 @@
     padding: 1.5rem;
     margin-bottom: 1rem;
     background-color: var(--white);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .article-item h3 {
     color: var(--deep-navy);
     margin-bottom: 0.5rem;
     text-align: left;
+    word-wrap: break-word;
 }
 
 .article-item .article-url {
@@ -136,26 +139,31 @@
     font-size: 0.9rem;
     margin-bottom: 0.5rem;
     display: block;
+    word-wrap: break-word;
 }
 
 .article-item .article-excerpt {
     color: var(--charcoal);
     margin-bottom: 1rem;
     text-align: left;
+    word-wrap: break-word;
 }
 
 .article-actions {
     display: flex;
     gap: 1rem;
+    flex-wrap: wrap;
 }
 
 .btn-small {
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1.5rem;
     border: none;
     border-radius: 4px;
     font-size: 0.9rem;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    flex: 1;
+    min-width: 100px;
 }
 
 .btn-view {
@@ -224,8 +232,20 @@ footer {
         text-align: left;
     }
 
+    .article-item {
+        padding: 1rem;
+    }
+
     .article-actions {
-        flex-direction: column;
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+    
+    .btn-small {
+        flex: 1;
+        min-width: 0;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
     }
     
     .content-card {
@@ -238,6 +258,23 @@ footer {
         font-size: 1.25rem;
     }
     
+    
+    .article-item {
+        padding: 0.75rem;
+    }
+    
+    .article-item h3 {
+        font-size: 1.1rem;
+    }
+    
+    .article-actions {
+        gap: 0.5rem;
+    }
+    
+    .btn-small {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
     .logout-btn {
         font-size: 0.85rem;
         padding: 0.5rem 1rem;
