@@ -162,7 +162,7 @@ function loadArticles() {
     `).join('');
 }
 
-// Generate article HTML
+// Generate article HTML (for download - will be deployed to GitHub Pages)
 function generateArticleHTML(article) {
     return `<!DOCTYPE html>
 <html lang="en">
@@ -170,7 +170,7 @@ function generateArticleHTML(article) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${article.title} - South San Education Explained</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
     <header>
@@ -178,10 +178,10 @@ function generateArticleHTML(article) {
             <div class="nav-container">
                 <div class="site-title">South San Education</div>
                 <ul class="nav-menu">
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="articles.html" class="active">Articles</a></li>
-                    <li><a href="about.html">About</a></li>
-                    <li><a href="contact.html">Contact</a></li>
+                    <li><a href="./index.html">Home</a></li>
+                    <li><a href="./articles.html" class="active">Articles</a></li>
+                    <li><a href="./about.html">About</a></li>
+                    <li><a href="./contact.html">Contact</a></li>
                 </ul>
             </div>
         </nav>
@@ -195,7 +195,7 @@ function generateArticleHTML(article) {
                 ${article.content}
             </div>
             <div style="margin-top: 3rem; text-align: center;">
-                <a href="articles.html" style="color: var(--muted-teak); font-weight: 600;">← Back to Articles</a>
+                <a href="./articles.html" style="color: var(--muted-teak); font-weight: 600;">← Back to Articles</a>
             </div>
         </article>
     </main>
@@ -220,13 +220,60 @@ function downloadArticle(slug, htmlContent) {
     window.URL.revokeObjectURL(url);
 }
 
-// View article (opens in new tab)
-function viewArticle(slug) {
+// View article (opens in new tab with inlined CSS for preview)
+async function viewArticle(slug) {
     const articles = JSON.parse(localStorage.getItem('articles') || '[]');
     const article = articles.find(a => a.slug === slug);
     
     if (article) {
-        const htmlContent = generateArticleHTML(article);
+        // Fetch CSS content to inline it for blob preview
+        let cssContent = '';
+        try {
+            const response = await fetch('styles.css');
+            cssContent = await response.text();
+        } catch (e) {
+            console.error('Failed to load CSS:', e);
+        }
+        
+        // Generate preview HTML with inlined CSS
+        const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${article.title} - South San Education Explained</title>
+    <style>
+        ${cssContent}
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="site-title">South San Education - Preview</div>
+                <ul class="nav-menu">
+                    <li><a href="#" onclick="window.close()">Close Preview</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <article class="content-card">
+            <h1>${article.title}</h1>
+            <p class="article-meta">Published: ${article.meta}</p>
+            <div class="article-content">
+                ${article.content}
+            </div>
+        </article>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 South San Education Explained. All rights reserved.</p>
+    </footer>
+</body>
+</html>`;
+        
         const blob = new Blob([htmlContent], { type: 'text/html' });
         const url = window.URL.createObjectURL(blob);
         window.open(url, '_blank');

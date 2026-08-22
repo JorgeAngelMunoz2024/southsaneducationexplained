@@ -19,19 +19,30 @@ function loadArticlesFromStorage() {
 }
 
 // View article directly from localStorage (for testing/preview)
-function viewArticleFromStorage(slug) {
+async function viewArticleFromStorage(slug) {
     const articles = JSON.parse(localStorage.getItem('articles') || '[]');
     const article = articles.find(a => a.slug === slug);
     
     if (article) {
-        // Generate full article HTML
+        // Fetch CSS content to inline it for blob preview
+        let cssContent = '';
+        try {
+            const response = await fetch('styles.css');
+            cssContent = await response.text();
+        } catch (e) {
+            console.error('Failed to load CSS:', e);
+        }
+        
+        // Generate full article HTML with inlined CSS for preview
         const articleHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${article.title} - South San Education Explained</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        ${cssContent}
+    </style>
 </head>
 <body>
     <header>
@@ -39,10 +50,10 @@ function viewArticleFromStorage(slug) {
             <div class="nav-container">
                 <div class="site-title">South San Education</div>
                 <ul class="nav-menu">
-                    <li><a href="index.html">Home</a></li>
-                    <li><a href="articles.html" class="active">Articles</a></li>
-                    <li><a href="about.html">About</a></li>
-                    <li><a href="contact.html">Contact</a></li>
+                    <li><a href="#" onclick="window.close()">Home</a></li>
+                    <li><a href="#" onclick="window.close()" class="active">Articles</a></li>
+                    <li><a href="#" onclick="window.close()">About</a></li>
+                    <li><a href="#" onclick="window.close()">Contact</a></li>
                 </ul>
             </div>
         </nav>
@@ -56,7 +67,7 @@ function viewArticleFromStorage(slug) {
                 ${article.content}
             </div>
             <div style="margin-top: 3rem; text-align: center;">
-                <a href="articles.html" style="color: var(--muted-teak); font-weight: 600;">← Back to Articles</a>
+                <a href="#" onclick="window.close(); return false;" style="color: var(--muted-teak); font-weight: 600;">← Close Preview</a>
             </div>
         </article>
     </main>
