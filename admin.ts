@@ -208,7 +208,7 @@ function generateArticleHTML(article: Article): string {
     <header>
         <nav class="navbar">
             <div class="nav-container">
-                <div class="site-title">South San Education</div>
+                <div class="site-title">South San Education Explained</div>
                 <ul class="nav-menu">
                     <li><a href="index.html">Home</a></li>
                     <li><a href="articles.html" class="active">Articles</a></li>
@@ -294,7 +294,7 @@ async function viewArticle(slug: string): Promise<void> {
     <header>
         <nav class="navbar">
             <div class="nav-container">
-                <div class="site-title">South San Education - Preview</div>
+                <div class="site-title">South San Education Explained - Preview</div>
                 <ul class="nav-menu">
                     <li><a href="#" onclick="window.close(); return false;">Close Preview</a></li>
                 </ul>
