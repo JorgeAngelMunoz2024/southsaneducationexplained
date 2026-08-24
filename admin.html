@@ -70,25 +70,14 @@
                             
                             <!-- Article Sections -->
                             <h3>Article Content</h3>
+                            <p style="color: var(--muted-teak); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                                Build your article with sections. Each section can include text and file attachments with descriptions.
+                            </p>
                             <div id="articleSections">
                                 <!-- Sections will be added here dynamically -->
                             </div>
                             
                             <button type="button" id="addSectionBtn" class="btn-secondary" style="margin-bottom: 1rem;">+ Add Section</button>
-                            
-                            <hr style="margin: 2rem 0; border: 1px solid #e0e0e0;">
-                            
-                            <!-- File Attachments -->
-                            <h3>Attachments (Images, Documents, Videos)</h3>
-                            <div class="form-group">
-                                <label for="fileUpload">Upload Files</label>
-                                <input type="file" id="fileUpload" multiple accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip">
-                                <small>Supported: Images (jpg, png, gif), Videos (mp4, webm), Documents (pdf, doc, docx, txt, zip)</small>
-                            </div>
-                            
-                            <div id="uploadedFiles" class="uploaded-files-container">
-                                <!-- Uploaded files will appear here -->
-                            </div>
 
                             <button type="submit" class="submit-btn">Publish Article</button>
                             <p id="formMessage" class="success-message"></p>

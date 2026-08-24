@@ -175,6 +175,15 @@
     background-color: var(--deep-navy);
 }
 
+.btn-edit {
+    background-color: #2e7d32;
+    color: var(--white);
+}
+
+.btn-edit:hover {
+    background-color: #1b5e20;
+}
+
 .btn-delete {
     background-color: #d32f2f;
     color: var(--white);
@@ -188,6 +197,33 @@
     text-align: center;
     color: var(--charcoal);
     padding: 2rem;
+}
+
+/* Article Management Tiles */
+#articlesList .article-preview {
+    border-bottom: 1px solid var(--warm-light-gray);
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+#articlesList .article-preview:last-child {
+    border-bottom: none;
+}
+
+#articlesList .article-preview h2 {
+    color: var(--deep-navy);
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+
+#articlesList .article-preview p {
+    text-align: left;
+    margin-bottom: 0.75rem;
+}
+
+#articlesList .article-actions {
+    margin-top: 1rem;
 }
 
 /* Article Sections */
@@ -386,6 +422,139 @@
 }
 
 .download-btn:hover {
+    background-color: var(--muted-teak);
+}
+
+/* Section-specific file attachments */
+.section-attachments {
+    border-top: 2px dashed #ddd;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    background-color: #f9f9f9;
+    padding: 1rem;
+    border-radius: 6px;
+}
+
+.section-attachments h4 {
+    margin-bottom: 0.75rem;
+}
+
+.section-files-list {
+    margin-top: 1rem;
+}
+
+.section-file-item {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.file-preview-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.file-preview-icon {
+    flex-shrink: 0;
+}
+
+.file-icon-small {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--warm-light-gray);
+    border-radius: 4px;
+    font-size: 2.5rem;
+}
+
+.file-preview-info {
+    flex: 1;
+}
+
+.file-preview-info strong {
+    color: var(--deep-navy);
+}
+
+.file-description {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.remove-file-btn-small {
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.remove-file-btn-small:hover {
+    background-color: #b71c1c;
+}
+
+/* Section attachments display in article */
+.section-attachments-display {
+    background-color: #f0f7ff;
+    border-left: 4px solid var(--deep-navy);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    border-radius: 4px;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #d0e4f7;
+}
+
+.attachment-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.attachment-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.attachment-content {
+    flex: 1;
+}
+
+.attachment-content p {
+    margin: 0 0 0.5rem 0;
+    color: var(--charcoal);
+    font-weight: 500;
+}
+
+.attachment-download {
+    display: inline-block;
+    background-color: var(--deep-navy);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+.attachment-download:hover {
     background-color: var(--muted-teak);
 }
 

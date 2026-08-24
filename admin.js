@@ -19,12 +19,9 @@ const tabBtns = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 const articleSections = document.getElementById('articleSections');
 const addSectionBtn = document.getElementById('addSectionBtn');
-const fileUpload = document.getElementById('fileUpload');
-const uploadedFiles = document.getElementById('uploadedFiles');
 
 // Global state
 let sectionCounter = 0;
-let uploadedFilesData = [];
 
 // Check if admin is already logged in
 if (localStorage.getItem('adminLoggedIn') === 'true') {
@@ -117,6 +114,7 @@ function addSection() {
     const sectionDiv = document.createElement('div');
     sectionDiv.className = 'article-section';
     sectionDiv.id = sectionId;
+    sectionDiv.dataset.files = JSON.stringify([]);
     sectionDiv.innerHTML = `
         <div class="section-header">
             <span class="section-number">Section ${sectionCounter}</span>
@@ -140,6 +138,16 @@ function addSection() {
                 <label>Content:</label>
                 <textarea class="section-content" rows="5" placeholder="Enter your paragraph text here..."></textarea>
             </div>
+        </div>
+        
+        <div class="section-attachments">
+            <h4 style="font-size: 0.95rem; color: var(--charcoal); margin-bottom: 0.75rem;">📎 Attachments for this Section</h4>
+            <div class="form-group">
+                <label>Add File:</label>
+                <input type="file" class="section-file-input" accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip" onchange="handleSectionFileUpload('${sectionId}', this)">
+                <small>Add images, PDFs, videos, or documents to this section</small>
+            </div>
+            <div class="section-files-list"></div>
         </div>
     `;
     
@@ -215,9 +223,12 @@ function updateSectionContent(sectionId, type) {
     contentArea.innerHTML = contentHTML;
 }
 
-// File Upload Handler
-fileUpload.addEventListener('change', (e) => {
-    const files = Array.from(e.target.files);
+// File Upload Handler for Sections
+function handleSectionFileUpload(sectionId, inputElement) {
+    const section = document.getElementById(sectionId);
+    const files = Array.from(inputElement.files);
+    
+    if (files.length === 0) return;
     
     files.forEach(file => {
         const reader = new FileReader();
@@ -228,19 +239,96 @@ fileUpload.addEventListener('change', (e) => {
                 size: formatFileSize(file.size),
                 type: file.type,
                 data: event.target.result,
-                category: getFileCategory(file.type, file.name)
+                category: getFileCategory(file.type, file.name),
+                description: '' // User will add description
             };
             
-            uploadedFilesData.push(fileData);
-            displayUploadedFile(fileData, uploadedFilesData.length - 1);
+            // Get current files for this section
+            let sectionFiles = JSON.parse(section.dataset.files || '[]');
+            sectionFiles.push(fileData);
+            section.dataset.files = JSON.stringify(sectionFiles);
+            
+            // Display the file
+            displaySectionFile(sectionId, fileData, sectionFiles.length - 1);
         };
         
         reader.readAsDataURL(file);
     });
     
     // Reset file input
-    fileUpload.value = '';
-});
+    inputElement.value = '';
+}
+
+function displaySectionFile(sectionId, fileData, fileIndex) {
+    const section = document.getElementById(sectionId);
+    const filesList = section.querySelector('.section-files-list');
+    
+    const fileDiv = document.createElement('div');
+    fileDiv.className = 'section-file-item';
+    fileDiv.dataset.fileIndex = fileIndex;
+    
+    let previewHTML = '';
+    if (fileData.type.startsWith('image/')) {
+        previewHTML = `<img src="${fileData.data}" alt="${fileData.name}" style="max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 4px;">`;
+    } else if (fileData.type.startsWith('video/')) {
+        previewHTML = `<div class="file-icon-small">🎥</div>`;
+    } else if (fileData.type.includes('pdf')) {
+        previewHTML = `<div class="file-icon-small">📄</div>`;
+    } else {
+        previewHTML = `<div class="file-icon-small">📎</div>`;
+    }
+    
+    fileDiv.innerHTML = `
+        <div class="file-preview-row">
+            <div class="file-preview-icon">
+                ${previewHTML}
+            </div>
+            <div class="file-preview-info">
+                <strong>${fileData.name}</strong> (${fileData.size})
+                <div class="form-group" style="margin-top: 0.5rem;">
+                    <label style="font-size: 0.85rem;">Description/Caption:</label>
+                    <input type="text" class="file-description" value="${fileData.description}" 
+                           placeholder="Describe this file for readers..." 
+                           onchange="updateFileDescription('${sectionId}', ${fileIndex}, this.value)">
+                    <small>This text will appear with a download link in the article</small>
+                </div>
+            </div>
+            <button type="button" class="remove-file-btn-small" onclick="removeSectionFile('${sectionId}', ${fileIndex})">✕</button>
+        </div>
+    `;
+    
+    filesList.appendChild(fileDiv);
+}
+
+function updateFileDescription(sectionId, fileIndex, description) {
+    const section = document.getElementById(sectionId);
+    let sectionFiles = JSON.parse(section.dataset.files || '[]');
+    if (sectionFiles[fileIndex]) {
+        sectionFiles[fileIndex].description = description;
+        section.dataset.files = JSON.stringify(sectionFiles);
+    }
+}
+
+function removeSectionFile(sectionId, fileIndex) {
+    const section = document.getElementById(sectionId);
+    let sectionFiles = JSON.parse(section.dataset.files || '[]');
+    sectionFiles.splice(fileIndex, 1);
+    section.dataset.files = JSON.stringify(sectionFiles);
+    
+    // Refresh display
+    refreshSectionFiles(sectionId);
+}
+
+function refreshSectionFiles(sectionId) {
+    const section = document.getElementById(sectionId);
+    const filesList = section.querySelector('.section-files-list');
+    const sectionFiles = JSON.parse(section.dataset.files || '[]');
+    
+    filesList.innerHTML = '';
+    sectionFiles.forEach((fileData, index) => {
+        displaySectionFile(sectionId, fileData, index);
+    });
+}
 
 function getFileCategory(mimeType, fileName) {
     if (mimeType.startsWith('image/')) return 'images';
@@ -254,46 +342,6 @@ function formatFileSize(bytes) {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-}
-
-function displayUploadedFile(fileData, index) {
-    const fileDiv = document.createElement('div');
-    fileDiv.className = 'file-preview';
-    fileDiv.dataset.index = index;
-    
-    let previewHTML = '';
-    if (fileData.type.startsWith('image/')) {
-        previewHTML = `<img src="${fileData.data}" alt="${fileData.name}">`;
-    } else if (fileData.type.startsWith('video/')) {
-        previewHTML = `<div class="file-icon">🎥</div>`;
-    } else if (fileData.type.includes('pdf')) {
-        previewHTML = `<div class="file-icon">📄</div>`;
-    } else {
-        previewHTML = `<div class="file-icon">📎</div>`;
-    }
-    
-    fileDiv.innerHTML = `
-        ${previewHTML}
-        <div class="file-info">
-            <span class="file-name">${fileData.name}</span>
-            <span class="file-size">${fileData.size}</span>
-        </div>
-        <button type="button" class="remove-file-btn" onclick="removeFile(${index})">Remove</button>
-    `;
-    
-    uploadedFiles.appendChild(fileDiv);
-}
-
-function removeFile(index) {
-    uploadedFilesData.splice(index, 1);
-    refreshUploadedFilesDisplay();
-}
-
-function refreshUploadedFilesDisplay() {
-    uploadedFiles.innerHTML = '';
-    uploadedFilesData.forEach((fileData, index) => {
-        displayUploadedFile(fileData, index);
-    });
 }
 
 // Article form submission
@@ -313,14 +361,29 @@ articleForm.addEventListener('submit', (e) => {
         const content = sectionEl.querySelector('.section-content')?.value || '';
         const author = sectionEl.querySelector('.section-author')?.value || '';
         const caption = sectionEl.querySelector('.section-caption')?.value || '';
+        const files = JSON.parse(sectionEl.dataset.files || '[]');
         
         sections.push({
             type,
             content,
             author,
-            caption
+            caption,
+            files
         });
     });
+    
+    // Count total files across all sections
+    const totalFiles = sections.reduce((sum, section) => sum + (section.files?.length || 0), 0);
+    
+    // Check if we're editing an existing article
+    const editingId = articleForm.dataset.editingId;
+    if (editingId) {
+        // Delete the old version
+        let articles = JSON.parse(localStorage.getItem('articles') || '[]');
+        articles = articles.filter(a => a.id !== parseInt(editingId));
+        localStorage.setItem('articles', JSON.stringify(articles));
+        delete articleForm.dataset.editingId;
+    }
     
     const article = {
         id: Date.now(),
@@ -329,7 +392,6 @@ articleForm.addEventListener('submit', (e) => {
         meta,
         excerpt,
         sections,
-        files: uploadedFilesData,
         dateCreated: new Date().toISOString()
     };
     
@@ -350,8 +412,8 @@ articleForm.addEventListener('submit', (e) => {
         <small>
             1. Download the HTML file above<br>
             2. Upload it to your GitHub repository's <code>/articles/</code> folder<br>
-            ${uploadedFilesData.length > 0 ? `3. Upload the attached files to the appropriate folders in <code>/assets/uploads/</code><br>` : ''}
-            ${uploadedFilesData.length > 0 ? `4. Update articles.html to include this article` : '3. Update articles.html to include this article'}
+            ${totalFiles > 0 ? `3. Upload the ${totalFiles} attached file${totalFiles > 1 ? 's' : ''} to the appropriate folders in <code>/assets/uploads/</code><br>` : ''}
+            ${totalFiles > 0 ? `4. Update articles.html to include this article` : '3. Update articles.html to include this article'}
         </small>
     `;
     
@@ -359,8 +421,6 @@ articleForm.addEventListener('submit', (e) => {
     articleForm.reset();
     urlPreview.textContent = '(auto-generated from title)';
     articleSections.innerHTML = '';
-    uploadedFilesData = [];
-    uploadedFiles.innerHTML = '';
     sectionCounter = 0;
     addSection(); // Add one initial section
     
@@ -390,16 +450,16 @@ function loadArticles() {
     }
     
     articlesList.innerHTML = articles.map(article => `
-        <div class="article-item">
-            <h3>${escapeHtml(article.title)}</h3>
-            <span class="article-url">URL: /articles/${article.slug}.html</span>
-            <p class="article-excerpt">${escapeHtml(article.excerpt)}</p>
-            <small style="color: var(--muted-teak);">
-                ${article.sections?.length || 0} sections, ${article.files?.length || 0} files
-            </small>
+        <div class="article-preview">
+            <h2>${escapeHtml(article.title)}</h2>
+            <p class="article-meta">Published: ${escapeHtml(article.meta || 'August 2026')}</p>
+            <p>${escapeHtml(article.excerpt)}</p>
+            <p style="color: var(--muted-teak); font-size: 0.9rem; margin-top: 0.5rem;">
+                ${article.sections?.length || 0} sections • ${article.sections?.reduce((sum, s) => sum + (s.files?.length || 0), 0) || 0} files attached
+            </p>
             <div class="article-actions">
-                <button class="btn-small btn-view" onclick="downloadArticleFile('${article.slug}.html', \`${generateArticleHTML(article).replace(/`/g, '\\`')}\`)">Download HTML</button>
-                <button class="btn-small btn-delete" onclick="deleteArticle(${article.id})">Delete</button>
+                <button class="btn-small btn-edit" onclick="editArticle(${article.id})">✏️ Edit</button>
+                <button class="btn-small btn-delete" onclick="deleteArticle(${article.id})">🗑️ Delete</button>
             </div>
         </div>
     `).join('');
@@ -450,38 +510,27 @@ function generateArticleHTML(article) {
                 sectionsHTML += `                </figure>\n\n`;
                 break;
         }
+        
+        // Add files attached to this section
+        if (section.files && section.files.length > 0) {
+            sectionsHTML += `                <div class="section-attachments-display">\n`;
+            section.files.forEach(file => {
+                const icon = file.category === 'images' ? '🖼️' : 
+                            file.category === 'videos' ? '🎥' : '📄';
+                const path = `../assets/uploads/${file.category}/${file.name}`;
+                const description = file.description || file.name;
+                
+                sectionsHTML += `                    <div class="attachment-item">\n`;
+                sectionsHTML += `                        <span class="attachment-icon">${icon}</span>\n`;
+                sectionsHTML += `                        <div class="attachment-content">\n`;
+                sectionsHTML += `                            <p>${escapeHtml(description)}</p>\n`;
+                sectionsHTML += `                            <a href="${path}" download class="attachment-download">📥 Download ${escapeHtml(file.name)} (${file.size})</a>\n`;
+                sectionsHTML += `                        </div>\n`;
+                sectionsHTML += `                    </div>\n`;
+            });
+            sectionsHTML += `                </div>\n\n`;
+        }
     });
-    
-    // Generate downloads section if files exist
-    let downloadsHTML = '';
-    if (article.files && article.files.length > 0) {
-        downloadsHTML = `
-            <div class="download-section">
-                <h4>📥 Downloads & Resources</h4>
-                <div class="download-list">`;
-        
-        article.files.forEach(file => {
-            const icon = file.category === 'images' ? '🖼️' : 
-                        file.category === 'videos' ? '🎥' : '📄';
-            const path = `../assets/uploads/${file.category}/${file.name}`;
-            
-            downloadsHTML += `
-                    <div class="download-item">
-                        <div class="download-item-info">
-                            <span class="download-icon">${icon}</span>
-                            <div>
-                                <strong>${escapeHtml(file.name)}</strong><br>
-                                <small style="color: var(--muted-teak);">${file.size}</small>
-                            </div>
-                        </div>
-                        <a href="${path}" download class="download-btn">Download</a>
-                    </div>`;
-        });
-        
-        downloadsHTML += `
-                </div>
-            </div>`;
-    }
     
     return `<!DOCTYPE html>
 <html lang="en">
@@ -517,7 +566,6 @@ function generateArticleHTML(article) {
             <p class="article-meta">Published: ${escapeHtml(article.meta)}</p>
             <div class="article-content">
 ${sectionsHTML}
-${downloadsHTML}
             </div>
             <div style="margin-top: 3rem; text-align: center;">
                 <a href="../articles.html" style="color: var(--muted-teak); font-weight: 600;">← Back to Articles</a>
@@ -557,6 +605,72 @@ function downloadArticleFile(filename, content) {
 }
 
 // Delete article
+function editArticle(id) {
+    const articles = JSON.parse(localStorage.getItem('articles') || '[]');
+    const article = articles.find(a => a.id === id);
+    
+    if (!article) {
+        alert('Article not found!');
+        return;
+    }
+    
+    // Switch to create tab
+    tabBtns.forEach(b => b.classList.remove('active'));
+    tabBtns[0].classList.add('active');
+    tabContents.forEach(content => content.classList.remove('active'));
+    document.getElementById('createTab').classList.add('active');
+    
+    // Populate form fields
+    articleTitle.value = article.title;
+    document.getElementById('articleMeta').value = article.meta || '';
+    document.getElementById('articleExcerpt').value = article.excerpt;
+    
+    // Clear existing sections
+    articleSections.innerHTML = '';
+    sectionCounter = 0;
+    
+    // Load article sections
+    article.sections.forEach(section => {
+        const sectionId = addSection();
+        const sectionDiv = document.getElementById(sectionId);
+        
+        // Set section type
+        const typeSelect = sectionDiv.querySelector('.section-type');
+        typeSelect.value = section.type;
+        updateSectionContent({ target: typeSelect });
+        
+        // Set section content
+        const contentInput = sectionDiv.querySelector('.section-content');
+        contentInput.value = section.content;
+        
+        // Set author and caption for quotes and images
+        if (section.type === 'quote' && section.author) {
+            const authorInput = sectionDiv.querySelector('.section-author');
+            if (authorInput) authorInput.value = section.author;
+        }
+        if (section.type === 'image-caption' && section.caption) {
+            const captionInput = sectionDiv.querySelector('.section-caption');
+            if (captionInput) captionInput.value = section.caption;
+        }
+        
+        // Load files if any
+        if (section.files && section.files.length > 0) {
+            sectionDiv.dataset.files = JSON.stringify(section.files);
+            refreshSectionFiles(sectionId);
+        }
+    });
+    
+    // Delete the old article on form submit
+    articleForm.dataset.editingId = id;
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    formMessage.textContent = 'Editing article. Click "Publish Article" to save changes.';
+    formMessage.style.display = 'block';
+    formMessage.style.color = 'var(--muted-teak)';
+}
+
 function deleteArticle(id) {
     if (confirm('Are you sure you want to delete this article?')) {
         let articles = JSON.parse(localStorage.getItem('articles') || '[]');
@@ -569,7 +683,10 @@ function deleteArticle(id) {
 // Make functions globally accessible
 window.removeSection = removeSection;
 window.updateSectionContent = updateSectionContent;
-window.removeFile = removeFile;
+window.handleSectionFileUpload = handleSectionFileUpload;
+window.updateFileDescription = updateFileDescription;
+window.removeSectionFile = removeSectionFile;
 window.downloadArticleFile = downloadArticleFile;
+window.editArticle = editArticle;
 window.deleteArticle = deleteArticle;
 

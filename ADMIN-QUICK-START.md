@@ -27,16 +27,25 @@ Your article is built from sections. Each section can be a different type:
 
 **Pro Tips:**
 - Click **"+ Add Section"** for more content blocks
-- Drag content types to reorder (coming soon!)
+- Each section can have its own file attachments
 - Remove unwanted sections with the Remove button
 
-#### Add Files (Optional)
-Upload supporting materials:
-- **Images**: Use in "Image with Caption" sections
-- **Documents**: PDFs, Word docs, spreadsheets
-- **Videos**: MP4, WebM files
+#### Add Files to Sections (New!)
+**Files are now attached directly to sections!**
 
-Files appear in a "Downloads & Resources" section automatically!
+For each section, you can:
+1. Click **"Add File"** within that section
+2. Upload images, PDFs, videos, or documents
+3. Add a **description/caption** for each file
+4. Files appear right after the section content with download links
+
+**Example:**
+- Section 1: "Budget Overview" paragraph
+  - Attach: budget-2026.pdf with description "Full budget breakdown"
+- Section 2: "Key Statistics" list
+  - Attach: stats-chart.png with description "Visual representation of data"
+
+Files will display inline with the content where readers need them!
 
 ### 3. Publish
 1. Click **"Publish Article"**
@@ -61,13 +70,15 @@ git push
 ```
 Type: Regular text content
 Use for: Main body text, explanations
-Example: "School budgets consist of three main components..."
+Files: Attach related documents, guides
+Example: "School budgets consist of..." + budget.pdf
 ```
 
 ### Heading
 ```
 Type: Section header (H2)
 Use for: Breaking content into major sections
+Files: Rarely needs attachments
 Example: "Understanding the Budget Process"
 ```
 
@@ -75,26 +86,31 @@ Example: "Understanding the Budget Process"
 ```
 Type: Unordered list (one item per line)
 Use for: Non-sequential items, features, benefits
+Files: Attach checklists, forms related to the list
 Example:
 Teacher salaries
 Classroom supplies
 Technology upgrades
++ Attach: expense-breakdown.xlsx
 ```
 
 ### Numbered List
 ```
 Type: Ordered list (one item per line)
 Use for: Steps, rankings, sequential items
+Files: Attach step-by-step guides, forms
 Example:
-Register online
-Submit documents
-Attend orientation
+1. Register online
+2. Submit documents
+3. Attend orientation
++ Attach: registration-guide.pdf
 ```
 
 ### Quote
 ```
 Type: Blockquote with optional author
-Use for: Testimonials, important statements, emphasis
+Use for: Testimonials, important statements
+Files: Attach source documents, references
 Example: 
 Quote: "Education is the most powerful weapon..."
 Author: Nelson Mandela
@@ -104,9 +120,11 @@ Author: Nelson Mandela
 ```
 Type: Image with optional caption
 Use for: Visual content, charts, photos
+Files: Attach high-res versions, related docs
 Example:
 Image: assets/uploads/images/budget-chart.png
 Caption: 2026 Budget Breakdown
++ Attach: chart-data.xlsx (for data behind the chart)
 ```
 
 ## 🎯 Content Best Practices
@@ -114,16 +132,28 @@ Caption: 2026 Budget Breakdown
 ### Structure
 ✅ Start with an introduction paragraph
 ✅ Use headings to break up long content
-✅ Mix text with lists and images
+✅ Attach files right where they're relevant
+✅ Add clear descriptions for all files
 ✅ End with a call-to-action or summary
 
-### Writing
-✅ Keep paragraphs under 4-5 lines
-✅ Use simple, clear language
-✅ Break complex topics into sections
-✅ Include examples when possible
+### Writing File Descriptions
+✅ Be specific: "2026 District Budget Report" not "Document"
+✅ Explain the value: "Step-by-step enrollment instructions with examples"
+✅ Mention file type if not obvious: "Interactive PDF form"
+✅ Keep it under 15 words
+
+**Good Descriptions:**
+- "Comprehensive parent handbook with involvement strategies and resources"
+- "Monthly volunteer opportunities calendar - sign up for activities"
+- "Teacher contact directory with email addresses and office hours"
+
+**Bad Descriptions:**
+- "File"
+- "Document"
+- "Click here"
 
 ### Files
+✅ Attach files to relevant sections, not all at the end
 ✅ Name files descriptively: `school-calendar-2026.pdf`
 ✅ Optimize images (compress before upload)
 ✅ Use common formats (JPG, PNG, PDF)
@@ -147,7 +177,7 @@ When you upload files, save them with meaningful names:
 
 ### View All Articles
 - Click **"Manage Articles"** tab
-- See all created articles
+- See all created articles with file counts
 - Download or delete as needed
 
 ### Edit an Article
@@ -162,14 +192,14 @@ When you upload files, save them with meaningful names:
 
 ## 🆘 Troubleshooting
 
-### Images not showing
-- Check file path: `assets/uploads/images/filename.jpg`
-- Ensure file uploaded to GitHub
-- Try relative path: `../assets/uploads/images/filename.jpg`
+### Files not displaying in article
+- Check file descriptions are filled in
+- Verify files uploaded to correct GitHub folder
+- Ensure file paths match: `../assets/uploads/[category]/filename`
 
-### Download button not working
-- Verify files uploaded to correct folder
-- Check file names match exactly
+### Download links broken
+- Verify files uploaded to `/assets/uploads/[category]/`
+- Check file names match exactly (case-sensitive)
 - Test file paths in browser
 
 ### Article looks broken
@@ -179,11 +209,11 @@ When you upload files, save them with meaningful names:
 
 ## 💡 Pro Tips
 
-1. **Preview before publishing**: Download and open the HTML locally
-2. **Use consistent formatting**: Maintain similar structure across articles
-3. **Plan your content**: Outline sections before you start
-4. **Optimize for mobile**: Keep images reasonable size
-5. **Test downloads**: Make sure files are accessible
+1. **Contextual files**: Place files in sections where readers need them
+2. **Clear descriptions**: Explain what the file contains and why it's useful
+3. **Preview before publishing**: Download and test the HTML locally
+4. **Consistent formatting**: Maintain similar structure across articles
+5. **Mobile-friendly**: Keep file sizes reasonable for mobile users
 
 ## 🔐 Security Reminder
 
@@ -195,3 +225,4 @@ When you upload files, save them with meaningful names:
 ## 📧 Questions?
 
 Refer to `FOLDER-STRUCTURE.md` for detailed documentation.
+
