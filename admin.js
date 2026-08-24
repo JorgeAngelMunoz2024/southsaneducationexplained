@@ -451,13 +451,14 @@ function loadArticles() {
     
     articlesList.innerHTML = articles.map(article => `
         <div class="article-preview">
-            <h2>${escapeHtml(article.title)}</h2>
+            <h2 style="cursor: pointer; color: var(--primary-teak);" onclick="viewArticle(${article.id})" title="Click to view article">${escapeHtml(article.title)}</h2>
             <p class="article-meta">Published: ${escapeHtml(article.meta || 'August 2026')}</p>
             <p>${escapeHtml(article.excerpt)}</p>
             <p style="color: var(--muted-teak); font-size: 0.9rem; margin-top: 0.5rem;">
                 ${article.sections?.length || 0} sections • ${article.sections?.reduce((sum, s) => sum + (s.files?.length || 0), 0) || 0} files attached
             </p>
             <div class="article-actions">
+                <button class="btn-small" onclick="viewArticle(${article.id})" style="background-color: var(--primary-teak);">👁️ View</button>
                 <button class="btn-small btn-edit" onclick="editArticle(${article.id})">✏️ Edit</button>
                 <button class="btn-small btn-delete" onclick="deleteArticle(${article.id})">🗑️ Delete</button>
             </div>
@@ -680,6 +681,160 @@ function deleteArticle(id) {
     }
 }
 
+// View article (preview)
+async function viewArticle(id) {
+    const articles = JSON.parse(localStorage.getItem('articles') || '[]');
+    const article = articles.find(a => a.id === id);
+    
+    if (!article) {
+        alert('Article not found!');
+        return;
+    }
+    
+    // Generate content from sections
+    const articleContent = generateArticleContentFromSections(article);
+    
+    // Fetch CSS content to inline it for blob preview
+    let cssContent = '';
+    let cssLoaded = false;
+    
+    try {
+        const response = await fetch('styles.css', { cache: 'no-cache' });
+        if (response.ok) {
+            cssContent = await response.text();
+            cssLoaded = true;
+        }
+    } catch (e) {
+        console.error('Failed to load CSS:', e);
+    }
+    
+    // Generate full article HTML with inlined CSS for preview
+    const articleHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>${escapeHtml(article.title)} - South San Education Explained</title>
+    ${cssLoaded ? `<style>${cssContent}</style>` : '<link rel="stylesheet" href="styles.css">'}
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="site-title">South San Education - Preview</div>
+                <ul class="nav-menu">
+                    <li><a href="#" onclick="window.close(); return false;">Home</a></li>
+                    <li><a href="#" onclick="window.close(); return false;" class="active">Articles</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">About</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Contact</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <article class="content-card">
+            <h1>${escapeHtml(article.title)}</h1>
+            <p class="article-meta">Published: ${escapeHtml(article.meta)}</p>
+            <div class="article-content">
+                ${articleContent}
+            </div>
+            <div style="margin-top: 3rem; text-align: center;">
+                <a href="#" onclick="window.close(); return false;" style="color: var(--muted-teak); font-weight: 600;">← Close Preview</a>
+            </div>
+        </article>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 South San Education Explained. All rights reserved.</p>
+    </footer>
+</body>
+</html>`;
+    
+    // Open in new tab
+    const blob = new Blob([articleHTML], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    
+    // Clean up blob URL after window opens
+    if (win) {
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+}
+
+// Generate article content from sections (for preview)
+function generateArticleContentFromSections(article) {
+    if (!article.sections || article.sections.length === 0) {
+        return '<p>No content available.</p>';
+    }
+    
+    let contentHTML = '';
+    
+    article.sections.forEach(section => {
+        switch(section.type) {
+            case 'heading':
+                contentHTML += `<h2>${escapeHtml(section.content)}</h2>\n`;
+                break;
+            case 'paragraph':
+                contentHTML += `<p>${escapeHtml(section.content)}</p>\n\n`;
+                break;
+            case 'list':
+                const listItems = section.content.split('\n').filter(item => item.trim());
+                contentHTML += `<ul>\n`;
+                listItems.forEach(item => {
+                    contentHTML += `    <li>${escapeHtml(item.trim())}</li>\n`;
+                });
+                contentHTML += `</ul>\n\n`;
+                break;
+            case 'numbered-list':
+                const numberedItems = section.content.split('\n').filter(item => item.trim());
+                contentHTML += `<ol>\n`;
+                numberedItems.forEach(item => {
+                    contentHTML += `    <li>${escapeHtml(item.trim())}</li>\n`;
+                });
+                contentHTML += `</ol>\n\n`;
+                break;
+            case 'quote':
+                contentHTML += `<blockquote>\n`;
+                contentHTML += `    <p>${escapeHtml(section.content)}</p>\n`;
+                if (section.author) {
+                    contentHTML += `    <footer>— ${escapeHtml(section.author)}</footer>\n`;
+                }
+                contentHTML += `</blockquote>\n\n`;
+                break;
+            case 'image-caption':
+                contentHTML += `<figure>\n`;
+                contentHTML += `    <img src="${escapeHtml(section.content)}" alt="${escapeHtml(section.caption || 'Article image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
+                if (section.caption) {
+                    contentHTML += `    <figcaption style="text-align: center; margin-top: 0.5rem; color: var(--muted-teak); font-size: 0.9rem;">${escapeHtml(section.caption)}</figcaption>\n`;
+                }
+                contentHTML += `</figure>\n\n`;
+                break;
+        }
+        
+        // Add files attached to this section
+        if (section.files && section.files.length > 0) {
+            contentHTML += `<div class="section-attachments-display">\n`;
+            section.files.forEach(file => {
+                const icon = file.category === 'images' ? '🖼️' : 
+                            file.category === 'videos' ? '🎥' : '📄';
+                const description = file.description || file.name;
+                
+                contentHTML += `    <div class="attachment-item">\n`;
+                contentHTML += `        <span class="attachment-icon">${icon}</span>\n`;
+                contentHTML += `        <div class="attachment-content">\n`;
+                contentHTML += `            <p>${escapeHtml(description)}</p>\n`;
+                contentHTML += `            <p style="font-size: 0.85rem; color: var(--muted-teak);">${escapeHtml(file.name)} (${file.size})</p>\n`;
+                contentHTML += `        </div>\n`;
+                contentHTML += `    </div>\n`;
+            });
+            contentHTML += `</div>\n\n`;
+        }
+    });
+    
+    return contentHTML;
+}
+
 // Make functions globally accessible
 window.removeSection = removeSection;
 window.updateSectionContent = updateSectionContent;
@@ -687,6 +842,7 @@ window.handleSectionFileUpload = handleSectionFileUpload;
 window.updateFileDescription = updateFileDescription;
 window.removeSectionFile = removeSectionFile;
 window.downloadArticleFile = downloadArticleFile;
+window.viewArticle = viewArticle;
 window.editArticle = editArticle;
 window.deleteArticle = deleteArticle;
 
