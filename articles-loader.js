@@ -154,21 +154,53 @@ function generateArticleContent(article) {
         
         // Add files attached to this section
         if (section.files && section.files.length > 0) {
-            contentHTML += `<div class="section-attachments-display">\n`;
             section.files.forEach(file => {
-                const icon = file.category === 'images' ? '🖼️' : 
-                            file.category === 'videos' ? '🎥' : '📄';
                 const description = file.description || file.name;
                 
-                contentHTML += `    <div class="attachment-item">\n`;
-                contentHTML += `        <span class="attachment-icon">${icon}</span>\n`;
-                contentHTML += `        <div class="attachment-content">\n`;
-                contentHTML += `            <p>${escapeHtml(description)}</p>\n`;
-                contentHTML += `            <p style="font-size: 0.85rem; color: var(--muted-teak);">${escapeHtml(file.name)} (${file.size})</p>\n`;
-                contentHTML += `        </div>\n`;
-                contentHTML += `    </div>\n`;
+                // Display based on file type
+                if (file.category === 'images' && file.data) {
+                    // Display image inline
+                    contentHTML += `<figure style="margin: 2rem 0;">\n`;
+                    contentHTML += `    <img src="${file.data}" alt="${escapeHtml(description)}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">\n`;
+                    if (description !== file.name) {
+                        contentHTML += `    <figcaption style="text-align: center; margin-top: 0.75rem; color: var(--muted-teak); font-size: 0.9rem;">${escapeHtml(description)}</figcaption>\n`;
+                    }
+                    contentHTML += `    <p style="text-align: center; font-size: 0.85rem; color: var(--muted-teak); margin-top: 0.5rem;">${escapeHtml(file.name)} (${file.size})</p>\n`;
+                    contentHTML += `</figure>\n\n`;
+                } else if (file.type && file.type.includes('pdf') && file.data) {
+                    // Display PDF viewer
+                    contentHTML += `<div style="margin: 2rem 0;">\n`;
+                    contentHTML += `    <h4 style="color: var(--charcoal); margin-bottom: 0.5rem;">📄 ${escapeHtml(description)}</h4>\n`;
+                    contentHTML += `    <iframe src="${file.data}" style="width: 100%; height: 600px; border: 2px solid #e0e0e0; border-radius: 8px;" title="${escapeHtml(description)}"></iframe>\n`;
+                    contentHTML += `    <p style="font-size: 0.85rem; color: var(--muted-teak); margin-top: 0.5rem;">${escapeHtml(file.name)} (${file.size})</p>\n`;
+                    contentHTML += `</div>\n\n`;
+                } else if (file.category === 'videos' && file.data) {
+                    // Display video player
+                    contentHTML += `<div style="margin: 2rem 0;">\n`;
+                    contentHTML += `    <h4 style="color: var(--charcoal); margin-bottom: 0.5rem;">🎥 ${escapeHtml(description)}</h4>\n`;
+                    contentHTML += `    <video controls style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">\n`;
+                    contentHTML += `        <source src="${file.data}" type="${file.type}">\n`;
+                    contentHTML += `        Your browser does not support the video tag.\n`;
+                    contentHTML += `    </video>\n`;
+                    contentHTML += `    <p style="font-size: 0.85rem; color: var(--muted-teak); margin-top: 0.5rem;">${escapeHtml(file.name)} (${file.size})</p>\n`;
+                    contentHTML += `</div>\n\n`;
+                } else {
+                    // Other file types - show as download link
+                    const icon = file.category === 'videos' ? '🎥' : '📄';
+                    contentHTML += `<div class="section-attachments-display" style="margin: 1.5rem 0;">\n`;
+                    contentHTML += `    <div class="attachment-item" style="display: flex; align-items: center; padding: 1rem; background: #f8f8f8; border-radius: 8px;">\n`;
+                    contentHTML += `        <span class="attachment-icon" style="font-size: 2rem; margin-right: 1rem;">${icon}</span>\n`;
+                    contentHTML += `        <div class="attachment-content" style="flex: 1;">\n`;
+                    contentHTML += `            <p style="margin: 0; font-weight: 600;">${escapeHtml(description)}</p>\n`;
+                    contentHTML += `            <p style="font-size: 0.85rem; color: var(--muted-teak); margin: 0.25rem 0;">${escapeHtml(file.name)} (${file.size})</p>\n`;
+                    if (file.data) {
+                        contentHTML += `            <a href="${file.data}" download="${escapeHtml(file.name)}" style="color: var(--primary-teak); text-decoration: none; font-size: 0.9rem;">📥 Download</a>\n`;
+                    }
+                    contentHTML += `        </div>\n`;
+                    contentHTML += `    </div>\n`;
+                    contentHTML += `</div>\n\n`;
+                }
             });
-            contentHTML += `</div>\n\n`;
         }
     });
     

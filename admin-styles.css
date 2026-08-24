@@ -662,3 +662,91 @@ footer {
         margin: 1rem auto;
     }
 }
+
+/* File Viewers - Images, PDFs, Videos */
+.article-content figure {
+    margin: 2rem 0;
+}
+
+.article-content figure img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+
+.article-content figure img:hover {
+    transform: scale(1.02);
+}
+
+.article-content figure figcaption {
+    text-align: center;
+    margin-top: 0.75rem;
+    color: var(--muted-teak);
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+/* PDF Viewer */
+.article-content iframe {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    width: 100%;
+    min-height: 600px;
+}
+
+/* Video Player */
+.article-content video {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Attachment Display (for other files) */
+.article-content .section-attachments-display {
+    margin: 1.5rem 0;
+}
+
+.article-content .attachment-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f8f8;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: background-color 0.2s ease;
+}
+
+.article-content .attachment-item:hover {
+    background: #f0f0f0;
+}
+
+.article-content .attachment-item .attachment-icon {
+    font-size: 2rem;
+    margin-right: 1rem;
+}
+
+.article-content .attachment-item .attachment-content {
+    flex: 1;
+}
+
+.article-content .attachment-item a {
+    color: var(--primary-teak);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.article-content .attachment-item a:hover {
+    color: var(--deep-navy);
+    text-decoration: underline;
+}
+
+/* Responsive adjustments for viewers */
+@media (max-width: 768px) {
+    .article-content iframe {
+        min-height: 400px;
+    }
+}
