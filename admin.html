@@ -66,9 +66,28 @@
                                 <textarea id="articleExcerpt" name="excerpt" rows="3" required placeholder="Short summary for article listing"></textarea>
                             </div>
 
+                            <hr style="margin: 2rem 0; border: 1px solid #e0e0e0;">
+                            
+                            <!-- Article Sections -->
+                            <h3>Article Content</h3>
+                            <div id="articleSections">
+                                <!-- Sections will be added here dynamically -->
+                            </div>
+                            
+                            <button type="button" id="addSectionBtn" class="btn-secondary" style="margin-bottom: 1rem;">+ Add Section</button>
+                            
+                            <hr style="margin: 2rem 0; border: 1px solid #e0e0e0;">
+                            
+                            <!-- File Attachments -->
+                            <h3>Attachments (Images, Documents, Videos)</h3>
                             <div class="form-group">
-                                <label for="articleContent">Article Content (HTML supported)</label>
-                                <textarea id="articleContent" name="content" rows="15" required placeholder="Write your article content here. You can use HTML tags like <h2>, <p>, <ul>, etc."></textarea>
+                                <label for="fileUpload">Upload Files</label>
+                                <input type="file" id="fileUpload" multiple accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip">
+                                <small>Supported: Images (jpg, png, gif), Videos (mp4, webm), Documents (pdf, doc, docx, txt, zip)</small>
+                            </div>
+                            
+                            <div id="uploadedFiles" class="uploaded-files-container">
+                                <!-- Uploaded files will appear here -->
                             </div>
 
                             <button type="submit" class="submit-btn">Publish Article</button>
