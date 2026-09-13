@@ -79,6 +79,18 @@ tabBtns.forEach(btn => {
         if (tabName === 'manage') {
             loadArticles();
         }
+        
+        if (COLLECTIONS[tabName]) {
+            loadCollectionList(tabName);
+            const sectionsContainer = document.getElementById(COLLECTIONS[tabName].sectionsId);
+            if (sectionsContainer.children.length === 0) {
+                addSection(COLLECTIONS[tabName].sectionsId);
+            }
+        }
+        
+        if (tabName === 'sources') {
+            refreshSourcesPreview();
+        }
     });
 });
 
@@ -107,9 +119,10 @@ addSectionBtn.addEventListener('click', () => {
     addSection();
 });
 
-function addSection() {
+function addSection(containerId = 'articleSections') {
     sectionCounter++;
     const sectionId = `section-${sectionCounter}`;
+    const container = document.getElementById(containerId);
     
     const sectionDiv = document.createElement('div');
     sectionDiv.className = 'article-section';
@@ -151,7 +164,8 @@ function addSection() {
         </div>
     `;
     
-    articleSections.appendChild(sectionDiv);
+    container.appendChild(sectionDiv);
+    return sectionId;
 }
 
 function removeSection(sectionId) {
@@ -344,6 +358,555 @@ function formatFileSize(bytes) {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 
+// ===================================================================
+// Generic Collections (Board Meetings, Question and Responses, Educational Lingo)
+// ===================================================================
+const COLLECTIONS = {
+    boardMeetings: {
+        storageKey: 'boardMeetings',
+        formId: 'boardMeetingForm',
+        titleId: 'boardMeetingTitle',
+        metaId: 'boardMeetingMeta',
+        excerptId: 'boardMeetingExcerpt',
+        sectionsId: 'boardMeetingSections',
+        addSectionBtnId: 'addBoardMeetingSectionBtn',
+        listId: 'boardMeetingsList',
+        messageId: 'boardMeetingFormMessage',
+        pageFile: 'board-meetings.html',
+        pageTitle: 'Board Meetings',
+        submitLabel: 'Publish Board Meeting',
+        intro: 'Stay informed about upcoming and past school board meetings, agendas, and minutes.'
+    },
+    qa: {
+        storageKey: 'qaEntries',
+        formId: 'qaForm',
+        titleId: 'qaTitle',
+        metaId: 'qaMeta',
+        excerptId: 'qaExcerpt',
+        sectionsId: 'qaSections',
+        addSectionBtnId: 'addQaSectionBtn',
+        listId: 'qaList',
+        messageId: 'qaFormMessage',
+        pageFile: 'question-and-responses.html',
+        pageTitle: 'Question and Responses',
+        submitLabel: 'Publish Response',
+        intro: 'Browse common questions and responses submitted by parents, students, and community members.'
+    },
+    lingo: {
+        storageKey: 'lingoEntries',
+        formId: 'lingoForm',
+        titleId: 'lingoTitle',
+        metaId: 'lingoMeta',
+        excerptId: 'lingoExcerpt',
+        sectionsId: 'lingoSections',
+        addSectionBtnId: 'addLingoSectionBtn',
+        listId: 'lingoList',
+        messageId: 'lingoFormMessage',
+        pageFile: 'educational-lingo.html',
+        pageTitle: 'Educational Lingo',
+        submitLabel: 'Publish Term',
+        intro: 'A glossary of common terms and acronyms used in South San\'s schools and board discussions.'
+    }
+};
+
+function getCollectionEntries(key) {
+    return JSON.parse(localStorage.getItem(COLLECTIONS[key].storageKey) || '[]');
+}
+
+function saveCollectionEntries(key, entries) {
+    localStorage.setItem(COLLECTIONS[key].storageKey, JSON.stringify(entries));
+}
+
+// Shared section-array -> published HTML (used for downloadable static pages)
+function renderSectionsForPublish(sections, pathPrefix) {
+    let html = '';
+    (sections || []).forEach(section => {
+        switch (section.type) {
+            case 'heading':
+                html += `                <h2>${escapeHtml(section.content)}</h2>\n`;
+                break;
+            case 'paragraph':
+                html += `                <p>${escapeHtml(section.content)}</p>\n\n`;
+                break;
+            case 'list': {
+                const items = section.content.split('\n').filter(item => item.trim());
+                html += `                <ul>\n`;
+                items.forEach(item => { html += `                    <li>${escapeHtml(item.trim())}</li>\n`; });
+                html += `                </ul>\n\n`;
+                break;
+            }
+            case 'numbered-list': {
+                const items = section.content.split('\n').filter(item => item.trim());
+                html += `                <ol>\n`;
+                items.forEach(item => { html += `                    <li>${escapeHtml(item.trim())}</li>\n`; });
+                html += `                </ol>\n\n`;
+                break;
+            }
+            case 'quote':
+                html += `                <blockquote>\n`;
+                html += `                    <p>${escapeHtml(section.content)}</p>\n`;
+                if (section.author) {
+                    html += `                    <footer>— ${escapeHtml(section.author)}</footer>\n`;
+                }
+                html += `                </blockquote>\n\n`;
+                break;
+            case 'image-caption':
+                html += `                <figure>\n`;
+                html += `                    <img src="${pathPrefix}${escapeHtml(section.content)}" alt="${escapeHtml(section.caption || 'Image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
+                if (section.caption) {
+                    html += `                    <figcaption style="text-align: center; margin-top: 0.5rem; color: var(--muted-teak); font-size: 0.9rem;">${escapeHtml(section.caption)}</figcaption>\n`;
+                }
+                html += `                </figure>\n\n`;
+                break;
+        }
+
+        if (section.files && section.files.length > 0) {
+            html += `                <div class="section-attachments-display">\n`;
+            section.files.forEach(file => {
+                const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
+                const path = `${pathPrefix}assets/uploads/${file.category}/${file.name}`;
+                const description = file.description || file.name;
+                html += `                    <div class="attachment-item">\n`;
+                html += `                        <span class="attachment-icon">${icon}</span>\n`;
+                html += `                        <div class="attachment-content">\n`;
+                html += `                            <p>${escapeHtml(description)}</p>\n`;
+                html += `                            <a href="${path}" download class="attachment-download">📥 Download ${escapeHtml(file.name)} (${file.size})</a>\n`;
+                html += `                        </div>\n`;
+                html += `                    </div>\n`;
+            });
+            html += `                </div>\n\n`;
+        }
+    });
+    return html;
+}
+
+function collectionNavHTML(activeKey, pathPrefix) {
+    const link = (file, label, key) =>
+        `<li><a href="${pathPrefix}${file}"${key === activeKey ? ' class="active"' : ''}>${label}</a></li>`;
+    return `
+                <ul class="nav-menu">
+                    ${link('index.html', 'Home', null)}
+                    ${link('articles.html', 'Articles', 'articles')}
+                    ${link('board-meetings.html', 'Board Meetings', 'boardMeetings')}
+                    ${link('question-and-responses.html', 'Question and Responses', 'qa')}
+                    ${link('educational-lingo.html', 'Educational Lingo', 'lingo')}
+                    ${link('sources.html', 'Sources', 'sources')}
+                    ${link('about.html', 'About', null)}
+                    ${link('contact.html', 'Contact', null)}
+                </ul>`;
+}
+
+function generateCollectionPageHTML(key) {
+    const cfg = COLLECTIONS[key];
+    const entries = getCollectionEntries(key);
+
+    const entriesHTML = entries.length === 0
+        ? '<p style="text-align: center;">No entries available yet. Check back soon!</p>'
+        : entries.map(entry => `
+                <div class="article-preview">
+                    <h2>${escapeHtml(entry.title)}</h2>
+                    ${entry.meta ? `<p class="article-meta">${escapeHtml(entry.meta)}</p>` : ''}
+                    <p>${escapeHtml(entry.excerpt)}</p>
+                    <div class="article-content">
+${renderSectionsForPublish(entry.sections, '')}
+                    </div>
+                </div>`).join('\n');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(cfg.pageTitle)} - South San Education Explained</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="site-title">South San Education Explained</div>${collectionNavHTML(key, '')}
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <article class="content-card">
+            <h1>${escapeHtml(cfg.pageTitle)}</h1>
+            <p>${escapeHtml(cfg.intro)}</p>
+            <div id="${key}Container">
+${entriesHTML}
+            </div>
+        </article>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 South San Education Explained. All rights reserved.</p>
+    </footer>
+
+    <script src="content-loader.js"></script>
+</body>
+</html>`;
+}
+
+function downloadCollectionPage(key) {
+    downloadArticleFile(COLLECTIONS[key].pageFile, generateCollectionPageHTML(key));
+}
+
+function loadCollectionList(key) {
+    const cfg = COLLECTIONS[key];
+    const listEl = document.getElementById(cfg.listId);
+    const entries = getCollectionEntries(key);
+
+    if (entries.length === 0) {
+        listEl.innerHTML = '<p class="no-articles">No entries yet. Create the first one above!</p>';
+        return;
+    }
+
+    listEl.innerHTML = entries.map(entry => `
+        <div class="article-preview">
+            <h2 style="cursor: pointer; color: var(--primary-teak);" onclick="viewCollectionEntry('${key}', ${entry.id})" title="Click to preview">${escapeHtml(entry.title)}</h2>
+            ${entry.meta ? `<p class="article-meta">${escapeHtml(entry.meta)}</p>` : ''}
+            <p>${escapeHtml(entry.excerpt)}</p>
+            <p style="color: var(--muted-teak); font-size: 0.9rem; margin-top: 0.5rem;">
+                ${entry.sections?.length || 0} sections • ${entry.sections?.reduce((sum, s) => sum + (s.files?.length || 0), 0) || 0} files attached
+            </p>
+            <div class="article-actions">
+                <button class="btn-small" onclick="viewCollectionEntry('${key}', ${entry.id})" style="background-color: var(--primary-teak);">👁️ View</button>
+                <button class="btn-small btn-edit" onclick="editCollectionEntry('${key}', ${entry.id})">✏️ Edit</button>
+                <button class="btn-small btn-delete" onclick="deleteCollectionEntry('${key}', ${entry.id})">🗑️ Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function editCollectionEntry(key, id) {
+    const cfg = COLLECTIONS[key];
+    const entries = getCollectionEntries(key);
+    const entry = entries.find(e => e.id === id);
+
+    if (!entry) {
+        alert('Entry not found!');
+        return;
+    }
+
+    // Switch to this tab
+    tabBtns.forEach(b => b.classList.remove('active'));
+    tabContents.forEach(content => content.classList.remove('active'));
+    document.querySelector(`.tab-btn[data-tab="${key}"]`).classList.add('active');
+    document.getElementById(`${key}Tab`).classList.add('active');
+
+    document.getElementById(cfg.titleId).value = entry.title;
+    document.getElementById(cfg.metaId).value = entry.meta || '';
+    document.getElementById(cfg.excerptId).value = entry.excerpt;
+
+    const sectionsContainer = document.getElementById(cfg.sectionsId);
+    sectionsContainer.innerHTML = '';
+
+    (entry.sections || []).forEach(section => {
+        const sectionId = addSection(cfg.sectionsId);
+        const sectionDiv = document.getElementById(sectionId);
+
+        const typeSelect = sectionDiv.querySelector('.section-type');
+        typeSelect.value = section.type;
+        updateSectionContent(sectionId, section.type);
+
+        const contentInput = sectionDiv.querySelector('.section-content');
+        contentInput.value = section.content;
+
+        if (section.type === 'quote' && section.author) {
+            const authorInput = sectionDiv.querySelector('.section-author');
+            if (authorInput) authorInput.value = section.author;
+        }
+        if (section.type === 'image-caption' && section.caption) {
+            const captionInput = sectionDiv.querySelector('.section-caption');
+            if (captionInput) captionInput.value = section.caption;
+        }
+
+        if (section.files && section.files.length > 0) {
+            sectionDiv.dataset.files = JSON.stringify(section.files);
+            refreshSectionFiles(sectionId);
+        }
+    });
+
+    document.getElementById(cfg.formId).dataset.editingId = id;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const msgEl = document.getElementById(cfg.messageId);
+    msgEl.textContent = `Editing entry. Click "${cfg.submitLabel}" to save changes.`;
+    msgEl.style.display = 'block';
+    msgEl.style.color = 'var(--muted-teak)';
+}
+
+function deleteCollectionEntry(key, id) {
+    if (confirm('Are you sure you want to delete this entry?')) {
+        let entries = getCollectionEntries(key);
+        entries = entries.filter(e => e.id !== id);
+        saveCollectionEntries(key, entries);
+        loadCollectionList(key);
+    }
+}
+
+async function viewCollectionEntry(key, id) {
+    const entries = getCollectionEntries(key);
+    const entry = entries.find(e => e.id === id);
+
+    if (!entry) {
+        alert('Entry not found!');
+        return;
+    }
+
+    const contentHTML = generateArticleContentFromSections(entry);
+
+    let cssContent = '';
+    let cssLoaded = false;
+    try {
+        const response = await fetch('styles.css', { cache: 'no-cache' });
+        if (response.ok) {
+            cssContent = await response.text();
+            cssLoaded = true;
+        }
+    } catch (e) {
+        console.error('Failed to load CSS:', e);
+    }
+
+    const previewHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>${escapeHtml(entry.title)} - South San Education Explained</title>
+    ${cssLoaded ? `<style>${cssContent}</style>` : '<link rel="stylesheet" href="styles.css">'}
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="site-title">South San Education Explained - Preview</div>
+                <ul class="nav-menu">
+                    <li><a href="#" onclick="window.close(); return false;">Home</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Articles</a></li>
+                    <li><a href="#" onclick="window.close(); return false;"${key === 'boardMeetings' ? ' class="active"' : ''}>Board Meetings</a></li>
+                    <li><a href="#" onclick="window.close(); return false;"${key === 'qa' ? ' class="active"' : ''}>Question and Responses</a></li>
+                    <li><a href="#" onclick="window.close(); return false;"${key === 'lingo' ? ' class="active"' : ''}>Educational Lingo</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Sources</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">About</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Contact</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <article class="content-card">
+            <h1>${escapeHtml(entry.title)}</h1>
+            ${entry.meta ? `<p class="article-meta">${escapeHtml(entry.meta)}</p>` : ''}
+            <div class="article-content">
+                ${contentHTML}
+            </div>
+            <div style="margin-top: 3rem; text-align: center;">
+                <a href="#" onclick="window.close(); return false;" style="color: var(--muted-teak); font-weight: 600;">← Close Preview</a>
+            </div>
+        </article>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 South San Education Explained. All rights reserved.</p>
+    </footer>
+</body>
+</html>`;
+
+    const blob = new Blob([previewHTML], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if (win) {
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
+}
+
+function setupCollectionForm(key) {
+    const cfg = COLLECTIONS[key];
+    const form = document.getElementById(cfg.formId);
+    const messageEl = document.getElementById(cfg.messageId);
+
+    document.getElementById(cfg.addSectionBtnId)?.addEventListener('click', () => {
+        addSection(cfg.sectionsId);
+    });
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const title = document.getElementById(cfg.titleId).value;
+        const meta = document.getElementById(cfg.metaId).value || new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        const excerpt = document.getElementById(cfg.excerptId).value;
+
+        const sectionsContainer = document.getElementById(cfg.sectionsId);
+        const sections = [];
+        sectionsContainer.querySelectorAll('.article-section').forEach(sectionEl => {
+            const type = sectionEl.querySelector('.section-type').value;
+            const content = sectionEl.querySelector('.section-content')?.value || '';
+            const author = sectionEl.querySelector('.section-author')?.value || '';
+            const caption = sectionEl.querySelector('.section-caption')?.value || '';
+            const files = JSON.parse(sectionEl.dataset.files || '[]');
+            sections.push({ type, content, author, caption, files });
+        });
+
+        let entries = getCollectionEntries(key);
+        const editingId = form.dataset.editingId;
+        if (editingId) {
+            entries = entries.filter(entry => entry.id !== parseInt(editingId));
+            delete form.dataset.editingId;
+        }
+
+        const entry = {
+            id: Date.now(),
+            title,
+            meta,
+            excerpt,
+            sections,
+            dateCreated: new Date().toISOString()
+        };
+
+        entries.unshift(entry);
+        saveCollectionEntries(key, entries);
+
+        const totalFiles = sections.reduce((sum, section) => sum + (section.files?.length || 0), 0);
+
+        messageEl.innerHTML = `
+            <strong>✅ Saved!</strong><br><br>
+            <button type="button" onclick="downloadCollectionPage('${key}')" class="submit-btn" style="font-size: 0.9rem; padding: 0.75rem 1.5rem;">
+                📥 Download updated ${cfg.pageFile}
+            </button><br><br>
+            <strong>Next Steps:</strong><br>
+            <small>
+                1. Download the updated page above (it includes all entries)<br>
+                2. Upload it to your GitHub repository, replacing <code>${cfg.pageFile}</code><br>
+                ${totalFiles > 0 ? `3. Upload the ${totalFiles} attached file${totalFiles > 1 ? 's' : ''} to the appropriate folders in <code>/assets/uploads/</code><br>4. Regenerate the Sources page in the Sources tab` : '3. Regenerate the Sources page in the Sources tab if you attached files'}
+            </small>
+        `;
+
+        form.reset();
+        sectionsContainer.innerHTML = '';
+        addSection(cfg.sectionsId);
+
+        loadCollectionList(key);
+
+        messageEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        setTimeout(() => { messageEl.innerHTML = ''; }, 30000);
+    });
+}
+
+Object.keys(COLLECTIONS).forEach(setupCollectionForm);
+
+// ===================================================================
+// Sources Directory (auto-populated from all section file attachments)
+// ===================================================================
+function collectAllSources() {
+    const sourceGroups = [
+        { label: 'Articles', storageKey: 'articles', linkFor: entry => `articles/${entry.slug}.html` },
+        { label: 'Board Meetings', storageKey: COLLECTIONS.boardMeetings.storageKey, linkFor: () => 'board-meetings.html' },
+        { label: 'Question and Responses', storageKey: COLLECTIONS.qa.storageKey, linkFor: () => 'question-and-responses.html' },
+        { label: 'Educational Lingo', storageKey: COLLECTIONS.lingo.storageKey, linkFor: () => 'educational-lingo.html' }
+    ];
+
+    const tree = [];
+
+    sourceGroups.forEach(group => {
+        const entries = JSON.parse(localStorage.getItem(group.storageKey) || '[]');
+        const entriesWithFiles = [];
+
+        entries.forEach(entry => {
+            const files = [];
+            (entry.sections || []).forEach(section => {
+                (section.files || []).forEach(file => files.push(file));
+            });
+            if (files.length > 0) {
+                entriesWithFiles.push({ title: entry.title, link: group.linkFor(entry), files });
+            }
+        });
+
+        if (entriesWithFiles.length > 0) {
+            tree.push({ label: group.label, entries: entriesWithFiles });
+        }
+    });
+
+    return tree;
+}
+
+function renderSourcesTree(tree) {
+    if (tree.length === 0) {
+        return '<p>No files have been attached yet. Attachments added to Articles, Board Meetings, Question and Responses, or Educational Lingo sections will automatically appear here.</p>';
+    }
+
+    let html = '<ul class="file-tree">\n';
+    tree.forEach(folder => {
+        html += `    <li class="file-tree-folder"><span class="file-tree-label">📁 ${escapeHtml(folder.label)}</span>\n        <ul>\n`;
+        folder.entries.forEach(entry => {
+            html += `            <li class="file-tree-folder"><span class="file-tree-label">📁 <a href="${entry.link}">${escapeHtml(entry.title)}</a></span>\n                <ul>\n`;
+            entry.files.forEach(file => {
+                const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
+                const path = `assets/uploads/${file.category}/${file.name}`;
+                const desc = file.description ? ` — ${escapeHtml(file.description)}` : '';
+                html += `                    <li class="file-tree-file"><a href="${path}" download>${icon} ${escapeHtml(file.name)}</a>${desc} <span class="file-size">(${file.size})</span></li>\n`;
+            });
+            html += `                </ul>\n            </li>\n`;
+        });
+        html += `        </ul>\n    </li>\n`;
+    });
+    html += '</ul>';
+    return html;
+}
+
+function generateSourcesPageHTML() {
+    const treeHTML = renderSourcesTree(collectAllSources());
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sources - South San Education Explained</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="site-title">South San Education Explained</div>${collectionNavHTML('sources', '')}
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <article class="content-card">
+            <h1>Sources</h1>
+            <p>Transparency matters. Below is a directory of every file — images, PDFs, documents, and videos — referenced across our articles and pages, organized by where they appear.</p>
+            <div id="sourcesTree">
+${treeHTML}
+            </div>
+        </article>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 South San Education Explained. All rights reserved.</p>
+    </footer>
+
+    <script src="content-loader.js"></script>
+</body>
+</html>`;
+}
+
+function refreshSourcesPreview() {
+    document.getElementById('sourcesPreview').innerHTML = renderSourcesTree(collectAllSources());
+}
+
+document.getElementById('generateSourcesBtn').addEventListener('click', () => {
+    downloadArticleFile('sources.html', generateSourcesPageHTML());
+    refreshSourcesPreview();
+    document.getElementById('sourcesFormMessage').innerHTML =
+        '<strong>✅ sources.html regenerated and downloaded!</strong> Upload it to your GitHub repository root, replacing the existing file.';
+    setTimeout(() => { document.getElementById('sourcesFormMessage').innerHTML = ''; }, 30000);
+});
+
 // Article form submission
 articleForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -355,7 +918,7 @@ articleForm.addEventListener('submit', (e) => {
     
     // Collect all sections
     const sections = [];
-    const sectionElements = document.querySelectorAll('.article-section');
+    const sectionElements = articleSections.querySelectorAll('.article-section');
     sectionElements.forEach(sectionEl => {
         const type = sectionEl.querySelector('.section-type').value;
         const content = sectionEl.querySelector('.section-content')?.value || '';
@@ -468,70 +1031,8 @@ function loadArticles() {
 
 // Generate article HTML (for download - will be deployed to GitHub Pages)
 function generateArticleHTML(article) {
-    // Generate sections HTML
-    let sectionsHTML = '';
-    article.sections.forEach(section => {
-        switch(section.type) {
-            case 'heading':
-                sectionsHTML += `                <h2>${escapeHtml(section.content)}</h2>\n`;
-                break;
-            case 'paragraph':
-                sectionsHTML += `                <p>${escapeHtml(section.content)}</p>\n\n`;
-                break;
-            case 'list':
-                const listItems = section.content.split('\n').filter(item => item.trim());
-                sectionsHTML += `                <ul>\n`;
-                listItems.forEach(item => {
-                    sectionsHTML += `                    <li>${escapeHtml(item.trim())}</li>\n`;
-                });
-                sectionsHTML += `                </ul>\n\n`;
-                break;
-            case 'numbered-list':
-                const numberedItems = section.content.split('\n').filter(item => item.trim());
-                sectionsHTML += `                <ol>\n`;
-                numberedItems.forEach(item => {
-                    sectionsHTML += `                    <li>${escapeHtml(item.trim())}</li>\n`;
-                });
-                sectionsHTML += `                </ol>\n\n`;
-                break;
-            case 'quote':
-                sectionsHTML += `                <blockquote>\n`;
-                sectionsHTML += `                    <p>${escapeHtml(section.content)}</p>\n`;
-                if (section.author) {
-                    sectionsHTML += `                    <footer>— ${escapeHtml(section.author)}</footer>\n`;
-                }
-                sectionsHTML += `                </blockquote>\n\n`;
-                break;
-            case 'image-caption':
-                sectionsHTML += `                <figure>\n`;
-                sectionsHTML += `                    <img src="../${escapeHtml(section.content)}" alt="${escapeHtml(section.caption || 'Article image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
-                if (section.caption) {
-                    sectionsHTML += `                    <figcaption style="text-align: center; margin-top: 0.5rem; color: var(--muted-teak); font-size: 0.9rem;">${escapeHtml(section.caption)}</figcaption>\n`;
-                }
-                sectionsHTML += `                </figure>\n\n`;
-                break;
-        }
-        
-        // Add files attached to this section
-        if (section.files && section.files.length > 0) {
-            sectionsHTML += `                <div class="section-attachments-display">\n`;
-            section.files.forEach(file => {
-                const icon = file.category === 'images' ? '🖼️' : 
-                            file.category === 'videos' ? '🎥' : '📄';
-                const path = `../assets/uploads/${file.category}/${file.name}`;
-                const description = file.description || file.name;
-                
-                sectionsHTML += `                    <div class="attachment-item">\n`;
-                sectionsHTML += `                        <span class="attachment-icon">${icon}</span>\n`;
-                sectionsHTML += `                        <div class="attachment-content">\n`;
-                sectionsHTML += `                            <p>${escapeHtml(description)}</p>\n`;
-                sectionsHTML += `                            <a href="${path}" download class="attachment-download">📥 Download ${escapeHtml(file.name)} (${file.size})</a>\n`;
-                sectionsHTML += `                        </div>\n`;
-                sectionsHTML += `                    </div>\n`;
-            });
-            sectionsHTML += `                </div>\n\n`;
-        }
-    });
+    // Generate sections HTML (paths are relative to /articles/, so files live under ../assets/uploads/)
+    const sectionsHTML = renderSectionsForPublish(article.sections, '../');
     
     return `<!DOCTYPE html>
 <html lang="en">
@@ -554,6 +1055,10 @@ function generateArticleHTML(article) {
                 <ul class="nav-menu">
                     <li><a href="../index.html">Home</a></li>
                     <li><a href="../articles.html" class="active">Articles</a></li>
+                    <li><a href="../board-meetings.html">Board Meetings</a></li>
+                    <li><a href="../question-and-responses.html">Question and Responses</a></li>
+                    <li><a href="../educational-lingo.html">Educational Lingo</a></li>
+                    <li><a href="../sources.html">Sources</a></li>
                     <li><a href="../about.html">About</a></li>
                     <li><a href="../contact.html">Contact</a></li>
                 </ul>
@@ -638,7 +1143,7 @@ function editArticle(id) {
         // Set section type
         const typeSelect = sectionDiv.querySelector('.section-type');
         typeSelect.value = section.type;
-        updateSectionContent({ target: typeSelect });
+        updateSectionContent(sectionId, section.type);
         
         // Set section content
         const contentInput = sectionDiv.querySelector('.section-content');
@@ -725,6 +1230,10 @@ async function viewArticle(id) {
                 <ul class="nav-menu">
                     <li><a href="#" onclick="window.close(); return false;">Home</a></li>
                     <li><a href="#" onclick="window.close(); return false;" class="active">Articles</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Board Meetings</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Question and Responses</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Educational Lingo</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Sources</a></li>
                     <li><a href="#" onclick="window.close(); return false;">About</a></li>
                     <li><a href="#" onclick="window.close(); return false;">Contact</a></li>
                 </ul>
@@ -877,4 +1386,8 @@ window.downloadArticleFile = downloadArticleFile;
 window.viewArticle = viewArticle;
 window.editArticle = editArticle;
 window.deleteArticle = deleteArticle;
+window.downloadCollectionPage = downloadCollectionPage;
+window.viewCollectionEntry = viewCollectionEntry;
+window.editCollectionEntry = editCollectionEntry;
+window.deleteCollectionEntry = deleteCollectionEntry;
 

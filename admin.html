@@ -43,6 +43,10 @@
                 <div class="admin-tabs">
                     <button class="tab-btn active" data-tab="create">Create Article</button>
                     <button class="tab-btn" data-tab="manage">Manage Articles</button>
+                    <button class="tab-btn" data-tab="boardMeetings">Board Meetings</button>
+                    <button class="tab-btn" data-tab="qa">Question and Responses</button>
+                    <button class="tab-btn" data-tab="lingo">Educational Lingo</button>
+                    <button class="tab-btn" data-tab="sources">Sources</button>
                 </div>
 
                 <!-- Create Article Tab -->
@@ -92,6 +96,146 @@
                         <div id="articlesList"></div>
                     </article>
                 </div>
+
+                <!-- Board Meetings Tab -->
+                <div id="boardMeetingsTab" class="tab-content">
+                    <article class="content-card">
+                        <h2>Board Meetings</h2>
+                        <p style="color: var(--muted-teak); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                            Add and edit board meeting agendas, minutes, and updates. Content is built the same way as articles, using sections.
+                        </p>
+                        <form id="boardMeetingForm">
+                            <div class="form-group">
+                                <label for="boardMeetingTitle">Meeting Title</label>
+                                <input type="text" id="boardMeetingTitle" name="title" required placeholder="e.g., September 2026 Regular Board Meeting">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="boardMeetingMeta">Meeting Date (optional)</label>
+                                <input type="text" id="boardMeetingMeta" name="meta" placeholder="e.g., September 15, 2026">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="boardMeetingExcerpt">Summary</label>
+                                <textarea id="boardMeetingExcerpt" name="excerpt" rows="3" required placeholder="Short summary for the meeting listing"></textarea>
+                            </div>
+
+                            <hr style="margin: 2rem 0; border: 1px solid #e0e0e0;">
+
+                            <h3>Meeting Content</h3>
+                            <div id="boardMeetingSections"></div>
+
+                            <button type="button" id="addBoardMeetingSectionBtn" class="btn-secondary" style="margin-bottom: 1rem;">+ Add Section</button>
+
+                            <button type="submit" class="submit-btn">Publish Board Meeting</button>
+                            <p id="boardMeetingFormMessage" class="success-message"></p>
+                        </form>
+
+                        <hr style="margin: 3rem 0; border: 1px solid #e0e0e0;">
+
+                        <h3>Existing Board Meetings</h3>
+                        <div id="boardMeetingsList"></div>
+                    </article>
+                </div>
+
+                <!-- Question and Responses Tab -->
+                <div id="qaTab" class="tab-content">
+                    <article class="content-card">
+                        <h2>Question and Responses</h2>
+                        <p style="color: var(--muted-teak); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                            Add and edit community questions and their responses.
+                        </p>
+                        <form id="qaForm">
+                            <div class="form-group">
+                                <label for="qaTitle">Question</label>
+                                <input type="text" id="qaTitle" name="title" required placeholder="e.g., How do I enroll my child mid-year?">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="qaMeta">Date Answered (optional)</label>
+                                <input type="text" id="qaMeta" name="meta" placeholder="e.g., September 2026">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="qaExcerpt">Short Answer Summary</label>
+                                <textarea id="qaExcerpt" name="excerpt" rows="3" required placeholder="Short summary of the response"></textarea>
+                            </div>
+
+                            <hr style="margin: 2rem 0; border: 1px solid #e0e0e0;">
+
+                            <h3>Full Response</h3>
+                            <div id="qaSections"></div>
+
+                            <button type="button" id="addQaSectionBtn" class="btn-secondary" style="margin-bottom: 1rem;">+ Add Section</button>
+
+                            <button type="submit" class="submit-btn">Publish Response</button>
+                            <p id="qaFormMessage" class="success-message"></p>
+                        </form>
+
+                        <hr style="margin: 3rem 0; border: 1px solid #e0e0e0;">
+
+                        <h3>Existing Questions</h3>
+                        <div id="qaList"></div>
+                    </article>
+                </div>
+
+                <!-- Educational Lingo Tab -->
+                <div id="lingoTab" class="tab-content">
+                    <article class="content-card">
+                        <h2>Educational Lingo</h2>
+                        <p style="color: var(--muted-teak); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                            Add and edit glossary terms used in South San's schools and board discussions.
+                        </p>
+                        <form id="lingoForm">
+                            <div class="form-group">
+                                <label for="lingoTitle">Term</label>
+                                <input type="text" id="lingoTitle" name="title" required placeholder="e.g., IEP">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="lingoMeta">Category (optional)</label>
+                                <input type="text" id="lingoMeta" name="meta" placeholder="e.g., Special Education">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="lingoExcerpt">Short Definition</label>
+                                <textarea id="lingoExcerpt" name="excerpt" rows="3" required placeholder="Short definition for the glossary listing"></textarea>
+                            </div>
+
+                            <hr style="margin: 2rem 0; border: 1px solid #e0e0e0;">
+
+                            <h3>Extended Explanation</h3>
+                            <div id="lingoSections"></div>
+
+                            <button type="button" id="addLingoSectionBtn" class="btn-secondary" style="margin-bottom: 1rem;">+ Add Section</button>
+
+                            <button type="submit" class="submit-btn">Publish Term</button>
+                            <p id="lingoFormMessage" class="success-message"></p>
+                        </form>
+
+                        <hr style="margin: 3rem 0; border: 1px solid #e0e0e0;">
+
+                        <h3>Existing Terms</h3>
+                        <div id="lingoList"></div>
+                    </article>
+                </div>
+
+                <!-- Sources Tab -->
+                <div id="sourcesTab" class="tab-content">
+                    <article class="content-card">
+                        <h2>Sources Directory</h2>
+                        <p style="color: var(--muted-teak); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                            This directory is generated automatically from every file attached to Articles, Board Meetings, Question and Responses, and Educational Lingo sections. Regenerate and download the page whenever you publish new attachments.
+                        </p>
+                        <button type="button" id="generateSourcesBtn" class="submit-btn">🔄 Regenerate Sources Page</button>
+                        <p id="sourcesFormMessage" class="success-message"></p>
+
+                        <hr style="margin: 2rem 0; border: 1px solid #e0e0e0;">
+
+                        <h3>Preview</h3>
+                        <div id="sourcesPreview"></div>
+                    </article>
+                </div>
             </div>
         </main>
     </div>
@@ -99,3 +243,4 @@
     <script src="admin.js"></script>
 </body>
 </html>
+

@@ -61,6 +61,10 @@ async function viewArticleFromStorage(slug) {
                 <ul class="nav-menu">
                     <li><a href="#" onclick="window.close(); return false;">Home</a></li>
                     <li><a href="#" onclick="window.close(); return false;" class="active">Articles</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Board Meetings</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Question and Responses</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Educational Lingo</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Sources</a></li>
                     <li><a href="#" onclick="window.close(); return false;">About</a></li>
                     <li><a href="#" onclick="window.close(); return false;">Contact</a></li>
                 </ul>

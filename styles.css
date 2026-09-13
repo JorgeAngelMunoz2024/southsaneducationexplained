@@ -55,7 +55,7 @@ body {
 .nav-menu {
     display: flex;
     list-style: none;
-    gap: 2rem;
+    gap: 1.25rem;
     flex-wrap: wrap;
 }
 
@@ -478,4 +478,74 @@ footer {
     .article-content iframe {
         min-height: 400px;
     }
+}
+
+/* Sources Directory Tree */
+.file-tree,
+.file-tree ul {
+    list-style: none;
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.file-tree {
+    padding-left: 0;
+}
+
+.file-tree li {
+    position: relative;
+    margin: 0.4rem 0;
+}
+
+.file-tree li::before {
+    content: "";
+    position: absolute;
+    top: 0.9rem;
+    left: -0.9rem;
+    width: 0.7rem;
+    border-top: 1px dashed #c9c3b8;
+}
+
+.file-tree ul li::after {
+    content: "";
+    position: absolute;
+    top: -0.4rem;
+    left: -0.9rem;
+    bottom: 0.9rem;
+    border-left: 1px dashed #c9c3b8;
+}
+
+.file-tree > li::before,
+.file-tree > li::after {
+    display: none;
+}
+
+.file-tree-label {
+    font-weight: 600;
+    color: var(--deep-navy);
+}
+
+.file-tree-label a {
+    color: var(--deep-navy);
+    text-decoration: none;
+}
+
+.file-tree-label a:hover {
+    text-decoration: underline;
+    color: var(--muted-teak);
+}
+
+.file-tree-file a {
+    color: var(--primary-teak, var(--muted-teak));
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.file-tree-file a:hover {
+    text-decoration: underline;
+}
+
+.file-tree-file .file-size {
+    color: var(--muted-teak);
+    font-size: 0.85rem;
 }

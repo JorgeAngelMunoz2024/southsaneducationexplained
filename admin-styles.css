@@ -69,6 +69,7 @@
 .admin-tabs {
     display: flex;
     gap: 1rem;
+    flex-wrap: wrap;
     margin-bottom: 2rem;
     border-bottom: 2px solid var(--warm-light-gray);
 }
