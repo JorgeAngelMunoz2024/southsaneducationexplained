@@ -114,6 +114,167 @@ function generateSlug(text) {
         .replace(/^-+|-+$/g, '');
 }
 
+// ===================================================================
+// Rich Text Editing (Bold/Italic/Underline/Link) for section content
+// ===================================================================
+
+// Section types whose content is edited as rich (formatted) HTML rather than plain text
+function isRichTextType(type) {
+    return type === 'paragraph' || type === 'heading' || type === 'quote';
+}
+
+function richTextToolbarHTML() {
+    return `
+                    <div class="rich-text-toolbar">
+                        <button type="button" class="rt-btn" data-cmd="bold" title="Bold"><strong>B</strong></button>
+                        <button type="button" class="rt-btn" data-cmd="italic" title="Italic"><em>I</em></button>
+                        <button type="button" class="rt-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+                        <button type="button" class="rt-btn rt-link-btn" data-cmd="createLink" title="Highlight text to add a link" disabled>🔗 Add Link</button>
+                        <button type="button" class="rt-btn" data-cmd="unlink" title="Remove Link">🔗✕ Remove Link</button>
+                    </div>`;
+}
+
+// Only http(s)/mailto/relative links are allowed - blocks javascript:/data: schemes
+function isSafeHref(href) {
+    if (!href) return false;
+    const trimmed = href.trim();
+    if (/^(https?:|mailto:)/i.test(trimmed)) return true;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return false; // any other scheme (javascript:, data:, etc.)
+    return true; // relative path, anchor, etc.
+}
+
+const ALLOWED_RICH_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'A', 'BR', 'SPAN']);
+
+// Strip any tags/attributes not in the allow-list before this HTML is stored or published
+function sanitizeRichHTML(html) {
+    const template = document.createElement('template');
+    template.innerHTML = html || '';
+
+    const sanitizeChildren = (node) => {
+        Array.from(node.childNodes).forEach(child => {
+            if (child.nodeType === Node.ELEMENT_NODE) {
+                sanitizeChildren(child);
+
+                if (!ALLOWED_RICH_TAGS.has(child.tagName)) {
+                    while (child.firstChild) child.parentNode.insertBefore(child.firstChild, child);
+                    child.remove();
+                    return;
+                }
+
+                const href = child.tagName === 'A' ? child.getAttribute('href') : null;
+                Array.from(child.attributes).forEach(attr => child.removeAttribute(attr.name));
+
+                if (child.tagName === 'A') {
+                    if (href && isSafeHref(href)) {
+                        child.setAttribute('href', href);
+                        child.setAttribute('target', '_blank');
+                        child.setAttribute('rel', 'noopener noreferrer');
+                    } else {
+                        while (child.firstChild) child.parentNode.insertBefore(child.firstChild, child);
+                        child.remove();
+                    }
+                }
+            } else if (child.nodeType !== Node.TEXT_NODE) {
+                child.remove();
+            }
+        });
+    };
+
+    sanitizeChildren(template.content);
+    return template.innerHTML.trim();
+}
+
+// Read a section's content field, handling both contenteditable (rich text) and plain fields
+function getSectionContentValue(sectionEl, type) {
+    const contentEl = sectionEl.querySelector('.section-content');
+    if (!contentEl) return '';
+    if (isRichTextType(type)) {
+        return sanitizeRichHTML(contentEl.innerHTML);
+    }
+    return contentEl.value || '';
+}
+
+// Populate a section's content field, handling both contenteditable (rich text) and plain fields
+function setSectionContentValue(sectionEl, type, value) {
+    const contentEl = sectionEl.querySelector('.section-content');
+    if (!contentEl) return;
+    if (isRichTextType(type)) {
+        contentEl.innerHTML = value || '';
+    } else {
+        contentEl.value = value || '';
+    }
+}
+
+// Keep the current selection/focus inside the contenteditable when a toolbar button is pressed
+document.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.rt-btn')) {
+        e.preventDefault();
+    }
+});
+
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.rt-btn');
+    if (!btn || btn.disabled) return;
+
+    const editable = btn.closest('.form-group')?.querySelector('.section-content[contenteditable]');
+    if (!editable) return;
+
+    editable.focus();
+    const cmd = btn.dataset.cmd;
+
+    if (cmd === 'createLink') {
+        // prompt() steals window focus and clears the contenteditable selection,
+        // so the highlighted range must be saved before it opens and restored after.
+        const selection = window.getSelection();
+        const savedRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
+
+        const url = (prompt('Enter the URL for this link:', 'https://') || '').trim();
+        if (!url) return;
+        if (!isSafeHref(url)) {
+            alert('That URL is not allowed.');
+            return;
+        }
+
+        editable.focus();
+        if (savedRange) {
+            selection.removeAllRanges();
+            selection.addRange(savedRange);
+        }
+        document.execCommand('createLink', false, url);
+    } else {
+        document.execCommand(cmd, false, null);
+    }
+});
+
+// Enable "Add Link" only when text is highlighted, and reflect Bold/Italic/Underline state
+document.addEventListener('selectionchange', () => {
+    document.querySelectorAll('.rt-link-btn').forEach(btn => { btn.disabled = true; });
+    document.querySelectorAll('.rt-btn.active').forEach(btn => { btn.classList.remove('active'); });
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const anchorNode = selection.anchorNode;
+    const anchorEl = anchorNode && (anchorNode.nodeType === Node.TEXT_NODE ? anchorNode.parentElement : anchorNode);
+    const editable = anchorEl && anchorEl.closest && anchorEl.closest('.section-content[contenteditable]');
+    if (!editable) return;
+
+    const toolbar = editable.closest('.form-group')?.querySelector('.rich-text-toolbar');
+    if (!toolbar) return;
+
+    ['bold', 'italic', 'underline'].forEach(cmd => {
+        const btn = toolbar.querySelector(`.rt-btn[data-cmd="${cmd}"]`);
+        if (btn && document.queryCommandState(cmd)) {
+            btn.classList.add('active');
+        }
+    });
+
+    if (!selection.isCollapsed) {
+        const linkBtn = toolbar.querySelector('.rt-link-btn');
+        if (linkBtn) linkBtn.disabled = false;
+    }
+});
+
 // Add Section Button
 addSectionBtn.addEventListener('click', () => {
     addSection();
@@ -149,7 +310,8 @@ function addSection(containerId = 'articleSections') {
         <div class="section-content-area">
             <div class="form-group">
                 <label>Content:</label>
-                <textarea class="section-content" rows="5" placeholder="Enter your paragraph text here..."></textarea>
+                ${richTextToolbarHTML()}
+                <div class="section-content" contenteditable="true" data-placeholder="Enter your paragraph text here..."></div>
             </div>
         </div>
         
@@ -186,7 +348,8 @@ function updateSectionContent(sectionId, type) {
             contentHTML = `
                 <div class="form-group">
                     <label>Heading Text:</label>
-                    <input type="text" class="section-content" placeholder="Enter heading text..." />
+                    ${richTextToolbarHTML()}
+                    <div class="section-content" contenteditable="true" data-placeholder="Enter heading text..."></div>
                 </div>
             `;
             break;
@@ -194,7 +357,8 @@ function updateSectionContent(sectionId, type) {
             contentHTML = `
                 <div class="form-group">
                     <label>Paragraph Content:</label>
-                    <textarea class="section-content" rows="5" placeholder="Enter your paragraph text here..."></textarea>
+                    ${richTextToolbarHTML()}
+                    <div class="section-content" contenteditable="true" data-placeholder="Enter your paragraph text here..."></div>
                 </div>
             `;
             break;
@@ -211,7 +375,8 @@ function updateSectionContent(sectionId, type) {
             contentHTML = `
                 <div class="form-group">
                     <label>Quote Text:</label>
-                    <textarea class="section-content" rows="3" placeholder="Enter quote text..."></textarea>
+                    ${richTextToolbarHTML()}
+                    <div class="section-content" contenteditable="true" data-placeholder="Enter quote text..."></div>
                 </div>
                 <div class="form-group">
                     <label>Quote Author (optional):</label>
@@ -359,7 +524,7 @@ function formatFileSize(bytes) {
 }
 
 // ===================================================================
-// Generic Collections (Board Meetings, Question and Responses, Educational Lingo)
+// Generic Collections (Board Meetings, Questions and Responses, Educational Lingo)
 // ===================================================================
 const COLLECTIONS = {
     boardMeetings: {
@@ -387,8 +552,8 @@ const COLLECTIONS = {
         addSectionBtnId: 'addQaSectionBtn',
         listId: 'qaList',
         messageId: 'qaFormMessage',
-        pageFile: 'question-and-responses.html',
-        pageTitle: 'Question and Responses',
+        pageFile: 'questions-and-responses.html',
+        pageTitle: 'Questions and Responses',
         submitLabel: 'Publish Response',
         intro: 'Browse common questions and responses submitted by parents, students, and community members.'
     },
@@ -423,10 +588,10 @@ function renderSectionsForPublish(sections, pathPrefix) {
     (sections || []).forEach(section => {
         switch (section.type) {
             case 'heading':
-                html += `                <h2>${escapeHtml(section.content)}</h2>\n`;
+                html += `                <h2>${section.content}</h2>\n`;
                 break;
             case 'paragraph':
-                html += `                <p>${escapeHtml(section.content)}</p>\n\n`;
+                html += `                <p>${section.content}</p>\n\n`;
                 break;
             case 'list': {
                 const items = section.content.split('\n').filter(item => item.trim());
@@ -444,7 +609,7 @@ function renderSectionsForPublish(sections, pathPrefix) {
             }
             case 'quote':
                 html += `                <blockquote>\n`;
-                html += `                    <p>${escapeHtml(section.content)}</p>\n`;
+                html += `                    <p>${section.content}</p>\n`;
                 if (section.author) {
                     html += `                    <footer>— ${escapeHtml(section.author)}</footer>\n`;
                 }
@@ -488,7 +653,7 @@ function collectionNavHTML(activeKey, pathPrefix) {
                     ${link('index.html', 'Home', null)}
                     ${link('articles.html', 'Articles', 'articles')}
                     ${link('board-meetings.html', 'Board Meetings', 'boardMeetings')}
-                    ${link('question-and-responses.html', 'Question and Responses', 'qa')}
+                    ${link('questions-and-responses.html', 'Questions and Responses', 'qa')}
                     ${link('educational-lingo.html', 'Educational Lingo', 'lingo')}
                     ${link('sources.html', 'Sources', 'sources')}
                     ${link('about.html', 'About', null)}
@@ -610,8 +775,7 @@ function editCollectionEntry(key, id) {
         typeSelect.value = section.type;
         updateSectionContent(sectionId, section.type);
 
-        const contentInput = sectionDiv.querySelector('.section-content');
-        contentInput.value = section.content;
+        setSectionContentValue(sectionDiv, section.type, section.content);
 
         if (section.type === 'quote' && section.author) {
             const authorInput = sectionDiv.querySelector('.section-author');
@@ -686,7 +850,7 @@ async function viewCollectionEntry(key, id) {
                     <li><a href="#" onclick="window.close(); return false;">Home</a></li>
                     <li><a href="#" onclick="window.close(); return false;">Articles</a></li>
                     <li><a href="#" onclick="window.close(); return false;"${key === 'boardMeetings' ? ' class="active"' : ''}>Board Meetings</a></li>
-                    <li><a href="#" onclick="window.close(); return false;"${key === 'qa' ? ' class="active"' : ''}>Question and Responses</a></li>
+                    <li><a href="#" onclick="window.close(); return false;"${key === 'qa' ? ' class="active"' : ''}>Questions and Responses</a></li>
                     <li><a href="#" onclick="window.close(); return false;"${key === 'lingo' ? ' class="active"' : ''}>Educational Lingo</a></li>
                     <li><a href="#" onclick="window.close(); return false;">Sources</a></li>
                     <li><a href="#" onclick="window.close(); return false;">About</a></li>
@@ -743,7 +907,7 @@ function setupCollectionForm(key) {
         const sections = [];
         sectionsContainer.querySelectorAll('.article-section').forEach(sectionEl => {
             const type = sectionEl.querySelector('.section-type').value;
-            const content = sectionEl.querySelector('.section-content')?.value || '';
+            const content = getSectionContentValue(sectionEl, type);
             const author = sectionEl.querySelector('.section-author')?.value || '';
             const caption = sectionEl.querySelector('.section-caption')?.value || '';
             const files = JSON.parse(sectionEl.dataset.files || '[]');
@@ -804,7 +968,7 @@ function collectAllSources() {
     const sourceGroups = [
         { label: 'Articles', storageKey: 'articles', linkFor: entry => `articles/${entry.slug}.html` },
         { label: 'Board Meetings', storageKey: COLLECTIONS.boardMeetings.storageKey, linkFor: () => 'board-meetings.html' },
-        { label: 'Question and Responses', storageKey: COLLECTIONS.qa.storageKey, linkFor: () => 'question-and-responses.html' },
+        { label: 'Questions and Responses', storageKey: COLLECTIONS.qa.storageKey, linkFor: () => 'questions-and-responses.html' },
         { label: 'Educational Lingo', storageKey: COLLECTIONS.lingo.storageKey, linkFor: () => 'educational-lingo.html' }
     ];
 
@@ -834,7 +998,7 @@ function collectAllSources() {
 
 function renderSourcesTree(tree) {
     if (tree.length === 0) {
-        return '<p>No files have been attached yet. Attachments added to Articles, Board Meetings, Question and Responses, or Educational Lingo sections will automatically appear here.</p>';
+        return '<p>No files have been attached yet. Attachments added to Articles, Board Meetings, Questions and Responses, or Educational Lingo sections will automatically appear here.</p>';
     }
 
     let html = '<ul class="file-tree">\n';
@@ -921,7 +1085,7 @@ articleForm.addEventListener('submit', (e) => {
     const sectionElements = articleSections.querySelectorAll('.article-section');
     sectionElements.forEach(sectionEl => {
         const type = sectionEl.querySelector('.section-type').value;
-        const content = sectionEl.querySelector('.section-content')?.value || '';
+        const content = getSectionContentValue(sectionEl, type);
         const author = sectionEl.querySelector('.section-author')?.value || '';
         const caption = sectionEl.querySelector('.section-caption')?.value || '';
         const files = JSON.parse(sectionEl.dataset.files || '[]');
@@ -967,8 +1131,7 @@ articleForm.addEventListener('submit', (e) => {
     // Show success message with download link
     formMessage.innerHTML = `
         <strong>✅ Article created successfully!</strong><br><br>
-        <button onclick="downloadArticleFile('${slug}.html', \`${articleHTML.replace(/`/g, '\\`')}\`)" 
-                class="submit-btn" style="font-size: 0.9rem; padding: 0.75rem 1.5rem;">
+        <button type="button" id="downloadArticleBtn" class="submit-btn" style="font-size: 0.9rem; padding: 0.75rem 1.5rem;">
             📥 Download ${slug}.html
         </button><br><br>
         <strong>Next Steps:</strong><br>
@@ -979,6 +1142,9 @@ articleForm.addEventListener('submit', (e) => {
             ${totalFiles > 0 ? `4. Update articles.html to include this article` : '3. Update articles.html to include this article'}
         </small>
     `;
+    document.getElementById('downloadArticleBtn').addEventListener('click', () => {
+        downloadArticleFile(`${slug}.html`, articleHTML);
+    });
     
     // Reset form
     articleForm.reset();
@@ -1056,7 +1222,7 @@ function generateArticleHTML(article) {
                     <li><a href="../index.html">Home</a></li>
                     <li><a href="../articles.html" class="active">Articles</a></li>
                     <li><a href="../board-meetings.html">Board Meetings</a></li>
-                    <li><a href="../question-and-responses.html">Question and Responses</a></li>
+                    <li><a href="../questions-and-responses.html">Questions and Responses</a></li>
                     <li><a href="../educational-lingo.html">Educational Lingo</a></li>
                     <li><a href="../sources.html">Sources</a></li>
                     <li><a href="../about.html">About</a></li>
@@ -1146,8 +1312,7 @@ function editArticle(id) {
         updateSectionContent(sectionId, section.type);
         
         // Set section content
-        const contentInput = sectionDiv.querySelector('.section-content');
-        contentInput.value = section.content;
+        setSectionContentValue(sectionDiv, section.type, section.content);
         
         // Set author and caption for quotes and images
         if (section.type === 'quote' && section.author) {
@@ -1231,7 +1396,7 @@ async function viewArticle(id) {
                     <li><a href="#" onclick="window.close(); return false;">Home</a></li>
                     <li><a href="#" onclick="window.close(); return false;" class="active">Articles</a></li>
                     <li><a href="#" onclick="window.close(); return false;">Board Meetings</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">Question and Responses</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Questions and Responses</a></li>
                     <li><a href="#" onclick="window.close(); return false;">Educational Lingo</a></li>
                     <li><a href="#" onclick="window.close(); return false;">Sources</a></li>
                     <li><a href="#" onclick="window.close(); return false;">About</a></li>
@@ -1282,10 +1447,10 @@ function generateArticleContentFromSections(article) {
     article.sections.forEach(section => {
         switch(section.type) {
             case 'heading':
-                contentHTML += `<h2>${escapeHtml(section.content)}</h2>\n`;
+                contentHTML += `<h2>${section.content}</h2>\n`;
                 break;
             case 'paragraph':
-                contentHTML += `<p>${escapeHtml(section.content)}</p>\n\n`;
+                contentHTML += `<p>${section.content}</p>\n\n`;
                 break;
             case 'list':
                 const listItems = section.content.split('\n').filter(item => item.trim());
@@ -1305,7 +1470,7 @@ function generateArticleContentFromSections(article) {
                 break;
             case 'quote':
                 contentHTML += `<blockquote>\n`;
-                contentHTML += `    <p>${escapeHtml(section.content)}</p>\n`;
+                contentHTML += `    <p>${section.content}</p>\n`;
                 if (section.author) {
                     contentHTML += `    <footer>— ${escapeHtml(section.author)}</footer>\n`;
                 }

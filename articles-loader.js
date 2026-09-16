@@ -62,7 +62,7 @@ async function viewArticleFromStorage(slug) {
                     <li><a href="#" onclick="window.close(); return false;">Home</a></li>
                     <li><a href="#" onclick="window.close(); return false;" class="active">Articles</a></li>
                     <li><a href="#" onclick="window.close(); return false;">Board Meetings</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">Question and Responses</a></li>
+                    <li><a href="#" onclick="window.close(); return false;">Questions and Responses</a></li>
                     <li><a href="#" onclick="window.close(); return false;">Educational Lingo</a></li>
                     <li><a href="#" onclick="window.close(); return false;">Sources</a></li>
                     <li><a href="#" onclick="window.close(); return false;">About</a></li>
@@ -117,10 +117,10 @@ function generateArticleContent(article) {
     article.sections.forEach(section => {
         switch(section.type) {
             case 'heading':
-                contentHTML += `<h2>${escapeHtml(section.content)}</h2>\n`;
+                contentHTML += `<h2>${section.content}</h2>\n`;
                 break;
             case 'paragraph':
-                contentHTML += `<p>${escapeHtml(section.content)}</p>\n\n`;
+                contentHTML += `<p>${section.content}</p>\n\n`;
                 break;
             case 'list':
                 const listItems = section.content.split('\n').filter(item => item.trim());
@@ -140,7 +140,7 @@ function generateArticleContent(article) {
                 break;
             case 'quote':
                 contentHTML += `<blockquote>\n`;
-                contentHTML += `    <p>${escapeHtml(section.content)}</p>\n`;
+                contentHTML += `    <p>${section.content}</p>\n`;
                 if (section.author) {
                     contentHTML += `    <footer>— ${escapeHtml(section.author)}</footer>\n`;
                 }

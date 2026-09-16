@@ -117,6 +117,62 @@
     color: var(--deep-navy);
 }
 
+/* Rich Text Toolbar */
+.rich-text-toolbar {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.rt-btn {
+    background-color: var(--white);
+    border: 1px solid #d9d4c8;
+    border-radius: 4px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.9rem;
+    color: var(--charcoal);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.rt-btn:hover:not(:disabled) {
+    background-color: var(--warm-light-gray);
+    border-color: var(--muted-teak);
+}
+
+.rt-btn.active {
+    background-color: var(--deep-navy);
+    border-color: var(--deep-navy);
+    color: var(--white);
+}
+
+.rt-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+div.section-content[contenteditable] {
+    min-height: 6rem;
+    padding: 0.75rem;
+    border: 1px solid #d9d4c8;
+    border-radius: 4px;
+    background-color: var(--white);
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+div.section-content[contenteditable]:focus {
+    outline: none;
+    border-color: var(--muted-teak);
+}
+
+div.section-content[contenteditable]:empty::before {
+    content: attr(data-placeholder);
+    color: #999;
+}
+
 /* Article Management */
 .article-item {
     border: 1px solid var(--warm-light-gray);

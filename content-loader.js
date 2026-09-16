@@ -1,4 +1,4 @@
-// Loads Board Meetings, Question and Responses, Educational Lingo, and Sources
+// Loads Board Meetings, Questions and Responses, Educational Lingo, and Sources
 // content dynamically from localStorage for local preview before publishing.
 
 function escapeHtmlLoader(text) {
@@ -19,10 +19,10 @@ function renderSectionsForLoader(sections) {
     sections.forEach(section => {
         switch (section.type) {
             case 'heading':
-                html += `<h2>${escapeHtmlLoader(section.content)}</h2>\n`;
+                html += `<h2>${section.content}</h2>\n`;
                 break;
             case 'paragraph':
-                html += `<p>${escapeHtmlLoader(section.content)}</p>\n\n`;
+                html += `<p>${section.content}</p>\n\n`;
                 break;
             case 'list': {
                 const items = section.content.split('\n').filter(item => item.trim());
@@ -39,7 +39,7 @@ function renderSectionsForLoader(sections) {
                 break;
             }
             case 'quote':
-                html += `<blockquote>\n    <p>${escapeHtmlLoader(section.content)}</p>\n`;
+                html += `<blockquote>\n    <p>${section.content}</p>\n`;
                 if (section.author) {
                     html += `    <footer>— ${escapeHtmlLoader(section.author)}</footer>\n`;
                 }
@@ -108,7 +108,7 @@ function loadSourcesTree() {
     const sourceGroups = [
         { label: 'Articles', storageKey: 'articles', linkFor: entry => `articles/${entry.slug}.html` },
         { label: 'Board Meetings', storageKey: 'boardMeetings', linkFor: () => 'board-meetings.html' },
-        { label: 'Question and Responses', storageKey: 'qaEntries', linkFor: () => 'question-and-responses.html' },
+        { label: 'Questions and Responses', storageKey: 'qaEntries', linkFor: () => 'questions-and-responses.html' },
         { label: 'Educational Lingo', storageKey: 'lingoEntries', linkFor: () => 'educational-lingo.html' }
     ];
 
