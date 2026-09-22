@@ -23,11 +23,6 @@ const addSectionBtn = document.getElementById('addSectionBtn');
 // Global state
 let sectionCounter = 0;
 
-// Check if admin is already logged in
-if (localStorage.getItem('adminLoggedIn') === 'true') {
-    showDashboard();
-}
-
 // Login form handler
 loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -2064,4 +2059,11 @@ window.handleLibraryFileUpload = handleLibraryFileUpload;
 window.updateLibraryDescription = updateLibraryDescription;
 window.removeLibraryFile = removeLibraryFile;
 window.copyLibraryPath = copyLibraryPath;
+
+// Must run last: showDashboard() (via loadDrafts/getDrafts) depends on consts
+// declared further down in this file (e.g. DRAFTS_STORAGE_KEY), so calling it
+// before the whole script has run throws a ReferenceError and breaks all tabs.
+if (localStorage.getItem('adminLoggedIn') === 'true') {
+    showDashboard();
+}
 
