@@ -189,6 +189,13 @@ a:hover {
     margin-bottom: 0.75rem;
 }
 
+.article-subtitle {
+    color: var(--charcoal);
+    font-size: 1.15rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
 .read-more {
     display: inline-block;
     color: var(--muted-teak);
@@ -203,6 +210,7 @@ a:hover {
 
 .article-content h2 {
     text-align: left;
+    font-size: 1.55rem;
     margin-top: 2.5rem;
 }
 

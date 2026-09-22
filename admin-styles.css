@@ -320,6 +320,30 @@ div.section-content[contenteditable]:empty::before {
     background-color: #b71c1c;
 }
 
+.subtitle-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.subtitle-row .subtitle-input {
+    flex: 1;
+}
+
+.remove-subtitle-btn {
+    background-color: #d32f2f;
+    color: white;
+    border: none;
+    padding: 0.4rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.remove-subtitle-btn:hover {
+    background-color: #b71c1c;
+}
+
 .section-type-selector {
     margin-bottom: 1rem;
 }

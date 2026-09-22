@@ -11,6 +11,7 @@ function loadArticlesFromStorage() {
     articlesContainer.innerHTML = articles.map(article => `
         <div class="article-preview">
             <h2>${article.title}</h2>
+            ${(article.subtitles || []).map(subtitle => `<p class="article-subtitle">${subtitle}</p>`).join('\n            ')}
             <p class="article-meta">Published: ${article.meta}</p>
             <p>${article.excerpt}</p>
             <a href="#" onclick="viewArticleFromStorage('${article.slug}'); return false;" class="read-more">Read More →</a>
@@ -75,6 +76,7 @@ async function viewArticleFromStorage(slug) {
     <main>
         <article class="content-card">
             <h1>${article.title}</h1>
+            ${(article.subtitles || []).map(subtitle => `<p class="article-subtitle">${subtitle}</p>`).join('\n            ')}
             <p class="article-meta">Published: ${article.meta}</p>
             <div class="article-content">
                 ${articleContent}

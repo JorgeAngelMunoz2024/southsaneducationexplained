@@ -117,6 +117,45 @@ function generateSlug(text) {
 }
 
 // ===================================================================
+// Subtitles (optional, repeatable text lines shown under a title)
+// ===================================================================
+function addSubtitleField(containerId, value = '') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const row = document.createElement('div');
+    row.className = 'subtitle-row';
+    row.innerHTML = `
+        <input type="text" class="subtitle-input" value="${escapeHtml(value)}" placeholder="Subtitle text">
+        <button type="button" class="remove-subtitle-btn" onclick="this.parentElement.remove()">Remove</button>
+    `;
+    container.appendChild(row);
+}
+
+function getSubtitles(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+    return Array.from(container.querySelectorAll('.subtitle-input'))
+        .map(input => input.value.trim())
+        .filter(value => value);
+}
+
+function setSubtitles(containerId, subtitles) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    (subtitles || []).forEach(subtitle => addSubtitleField(containerId, subtitle));
+}
+
+function renderSubtitlesHTML(subtitles, indent = '            ') {
+    return (subtitles || [])
+        .map(subtitle => `${indent}<p class="article-subtitle">${escapeHtml(subtitle)}</p>\n`)
+        .join('');
+}
+
+document.getElementById('addArticleSubtitleBtn')?.addEventListener('click', () => addSubtitleField('articleSubtitles'));
+
+// ===================================================================
 // Rich Text Editing (Bold/Italic/Underline/Link) for section content
 // ===================================================================
 
@@ -533,6 +572,8 @@ const COLLECTIONS = {
         storageKey: 'boardMeetings',
         formId: 'boardMeetingForm',
         titleId: 'boardMeetingTitle',
+        subtitlesId: 'boardMeetingSubtitles',
+        addSubtitleBtnId: 'addBoardMeetingSubtitleBtn',
         metaId: 'boardMeetingMeta',
         excerptId: 'boardMeetingExcerpt',
         sectionsId: 'boardMeetingSections',
@@ -548,6 +589,8 @@ const COLLECTIONS = {
         storageKey: 'qaEntries',
         formId: 'qaForm',
         titleId: 'qaTitle',
+        subtitlesId: 'qaSubtitles',
+        addSubtitleBtnId: 'addQaSubtitleBtn',
         metaId: 'qaMeta',
         excerptId: 'qaExcerpt',
         sectionsId: 'qaSections',
@@ -563,6 +606,8 @@ const COLLECTIONS = {
         storageKey: 'lingoEntries',
         formId: 'lingoForm',
         titleId: 'lingoTitle',
+        subtitlesId: 'lingoSubtitles',
+        addSubtitleBtnId: 'addLingoSubtitleBtn',
         metaId: 'lingoMeta',
         excerptId: 'lingoExcerpt',
         sectionsId: 'lingoSections',
@@ -672,7 +717,7 @@ function generateCollectionPageHTML(key) {
         : entries.map(entry => `
                 <div class="article-preview">
                     <h2>${escapeHtml(entry.title)}</h2>
-                    ${entry.meta ? `<p class="article-meta">${escapeHtml(entry.meta)}</p>` : ''}
+${renderSubtitlesHTML(entry.subtitles, '                    ')}                    ${entry.meta ? `<p class="article-meta">${escapeHtml(entry.meta)}</p>` : ''}
                     <p>${escapeHtml(entry.excerpt)}</p>
                     <div class="article-content">
 ${renderSectionsForPublish(entry.sections, '')}
@@ -763,6 +808,7 @@ function editCollectionEntry(key, id) {
     document.getElementById(`${key}Tab`).classList.add('active');
 
     document.getElementById(cfg.titleId).value = entry.title;
+    setSubtitles(cfg.subtitlesId, entry.subtitles || []);
     document.getElementById(cfg.metaId).value = entry.meta || '';
     document.getElementById(cfg.excerptId).value = entry.excerpt;
 
@@ -865,7 +911,7 @@ async function viewCollectionEntry(key, id) {
     <main>
         <article class="content-card">
             <h1>${escapeHtml(entry.title)}</h1>
-            ${entry.meta ? `<p class="article-meta">${escapeHtml(entry.meta)}</p>` : ''}
+${renderSubtitlesHTML(entry.subtitles, '            ')}            ${entry.meta ? `<p class="article-meta">${escapeHtml(entry.meta)}</p>` : ''}
             <div class="article-content">
                 ${contentHTML}
             </div>
@@ -898,10 +944,15 @@ function setupCollectionForm(key) {
         addSection(cfg.sectionsId);
     });
 
+    document.getElementById(cfg.addSubtitleBtnId)?.addEventListener('click', () => {
+        addSubtitleField(cfg.subtitlesId);
+    });
+
     form.addEventListener('submit', (e) => {
         e.preventDefault();
 
         const title = document.getElementById(cfg.titleId).value;
+        const subtitles = getSubtitles(cfg.subtitlesId);
         const meta = document.getElementById(cfg.metaId).value || new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         const excerpt = document.getElementById(cfg.excerptId).value;
 
@@ -926,6 +977,7 @@ function setupCollectionForm(key) {
         const entry = {
             id: Date.now(),
             title,
+            subtitles,
             meta,
             excerpt,
             sections,
@@ -951,6 +1003,7 @@ function setupCollectionForm(key) {
         `;
 
         form.reset();
+        document.getElementById(cfg.subtitlesId).innerHTML = '';
         sectionsContainer.innerHTML = '';
         addSection(cfg.sectionsId);
 
@@ -1203,6 +1256,7 @@ articleForm.addEventListener('submit', (e) => {
     e.preventDefault();
     
     const title = document.getElementById('articleTitle').value;
+    const subtitles = getSubtitles('articleSubtitles');
     const meta = document.getElementById('articleMeta').value || new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     const excerpt = document.getElementById('articleExcerpt').value;
     const slug = generateSlug(title);
@@ -1243,6 +1297,7 @@ articleForm.addEventListener('submit', (e) => {
         id: Date.now(),
         title,
         slug,
+        subtitles,
         meta,
         excerpt,
         sections,
@@ -1276,6 +1331,7 @@ articleForm.addEventListener('submit', (e) => {
     // Reset form
     articleForm.reset();
     urlPreview.textContent = '(auto-generated from title)';
+    document.getElementById('articleSubtitles').innerHTML = '';
     articleSections.innerHTML = '';
     sectionCounter = 0;
     addSection(); // Add one initial section
@@ -1362,7 +1418,7 @@ function generateArticleHTML(article) {
     <main>
         <article class="content-card">
             <h1>${escapeHtml(article.title)}</h1>
-            <p class="article-meta">Published: ${escapeHtml(article.meta)}</p>
+${renderSubtitlesHTML(article.subtitles, '            ')}            <p class="article-meta">Published: ${escapeHtml(article.meta)}</p>
             <div class="article-content">
 ${sectionsHTML}
             </div>
@@ -1421,6 +1477,7 @@ function editArticle(id) {
     
     // Populate form fields
     articleTitle.value = article.title;
+    setSubtitles('articleSubtitles', article.subtitles || []);
     document.getElementById('articleMeta').value = article.meta || '';
     document.getElementById('articleExcerpt').value = article.excerpt;
     
@@ -1536,7 +1593,7 @@ async function viewArticle(id) {
     <main>
         <article class="content-card">
             <h1>${escapeHtml(article.title)}</h1>
-            <p class="article-meta">Published: ${escapeHtml(article.meta)}</p>
+${renderSubtitlesHTML(article.subtitles, '            ')}            <p class="article-meta">Published: ${escapeHtml(article.meta)}</p>
             <div class="article-content">
                 ${articleContent}
             </div>

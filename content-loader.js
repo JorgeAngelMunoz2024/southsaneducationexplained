@@ -91,6 +91,7 @@ function loadCollectionContainer(storageKey, containerId) {
     container.innerHTML = entries.map(entry => `
         <div class="article-preview">
             <h2>${escapeHtmlLoader(entry.title)}</h2>
+            ${(entry.subtitles || []).map(subtitle => `<p class="article-subtitle">${escapeHtmlLoader(subtitle)}</p>`).join('\n            ')}
             ${entry.meta ? `<p class="article-meta">${escapeHtmlLoader(entry.meta)}</p>` : ''}
             <p>${escapeHtmlLoader(entry.excerpt)}</p>
             <div class="article-content">
