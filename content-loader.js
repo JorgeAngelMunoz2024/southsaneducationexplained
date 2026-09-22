@@ -1,6 +1,24 @@
 // Loads Board Meetings, Questions and Responses, Educational Lingo, and Sources
 // content dynamically from localStorage for local preview before publishing.
 
+// Applies admin-edited page text (saved from the "Site Pages" admin tab) to any
+// element on this page marked with data-editable="<key>", so local previews
+// reflect edits before the page is re-downloaded and published.
+function applySitePageOverrides() {
+    const pageFile = location.pathname.split('/').pop() || 'index.html';
+    const allPageContent = JSON.parse(localStorage.getItem('sitePageContent') || '{}');
+    const overrides = allPageContent[pageFile];
+    if (!overrides) return;
+
+    document.querySelectorAll('[data-editable]').forEach(el => {
+        const key = el.getAttribute('data-editable');
+        if (overrides[key] !== undefined) {
+            el.innerHTML = overrides[key];
+        }
+    });
+}
+applySitePageOverrides();
+
 function escapeHtmlLoader(text) {
     if (!text) return '';
     const div = document.createElement('div');

@@ -1,14 +1,20 @@
-// Load articles dynamically from localStorage
+// Load articles dynamically from localStorage, without erasing the statically
+// published articles already present in the page's HTML.
 function loadArticlesFromStorage() {
     const articlesContainer = document.getElementById('articlesContainer');
     const articles = JSON.parse(localStorage.getItem('articles') || '[]');
-    
-    if (articles.length === 0) {
-        articlesContainer.innerHTML = '<p style="text-align: center;">No articles available yet. Check back soon!</p>';
-        return;
-    }
-    
-    articlesContainer.innerHTML = articles.map(article => `
+
+    if (articles.length === 0) return; // Keep the statically published articles already in the page
+
+    // Skip articles that are already statically listed on the page (matched by slug)
+    const existingSlugs = new Set(
+        Array.from(articlesContainer.querySelectorAll('a[href^="articles/"]'))
+            .map(a => a.getAttribute('href').replace(/^articles\//, '').replace(/\.html$/, ''))
+    );
+    const newArticles = articles.filter(article => !existingSlugs.has(article.slug));
+    if (newArticles.length === 0) return;
+
+    const newArticlesHTML = newArticles.map(article => `
         <div class="article-preview">
             <h2>${article.title}</h2>
             ${(article.subtitles || []).map(subtitle => `<p class="article-subtitle">${subtitle}</p>`).join('\n            ')}
@@ -17,6 +23,8 @@ function loadArticlesFromStorage() {
             <a href="#" onclick="viewArticleFromStorage('${article.slug}'); return false;" class="read-more">Read More →</a>
         </div>
     `).join('');
+
+    articlesContainer.insertAdjacentHTML('afterbegin', newArticlesHTML);
 }
 
 // View article directly from localStorage (for testing/preview)

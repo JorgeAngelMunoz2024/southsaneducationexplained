@@ -95,6 +95,11 @@ tabBtns.forEach(btn => {
             refreshSourcesPreview();
             renderLibraryList();
         }
+
+        if (tabName === 'sitePages') {
+            const sitePageSelect = document.getElementById('sitePageSelect');
+            if (sitePageSelect) loadSitePageFields(sitePageSelect.value);
+        }
     });
 });
 
@@ -623,6 +628,29 @@ const COLLECTIONS = {
     }
 };
 
+// ===================================================================
+// Site Page Text (editable text blocks on static pages, marked with
+// data-editable="key" in the HTML). Shared by the "Site Pages" admin
+// tab and by the templates below that regenerate whole pages.
+// ===================================================================
+const SITE_PAGE_CONTENT_KEY = 'sitePageContent';
+
+function getSitePageContent() {
+    return JSON.parse(localStorage.getItem(SITE_PAGE_CONTENT_KEY) || '{}');
+}
+
+function getPageFieldValue(pageFile, key, fallback = '') {
+    const all = getSitePageContent();
+    return (all[pageFile] && all[pageFile][key] !== undefined) ? all[pageFile][key] : fallback;
+}
+
+function setPageFieldValue(pageFile, key, value) {
+    const all = getSitePageContent();
+    if (!all[pageFile]) all[pageFile] = {};
+    all[pageFile][key] = value;
+    localStorage.setItem(SITE_PAGE_CONTENT_KEY, JSON.stringify(all));
+}
+
 function getCollectionEntries(key) {
     return JSON.parse(localStorage.getItem(COLLECTIONS[key].storageKey) || '[]');
 }
@@ -746,7 +774,7 @@ ${renderSectionsForPublish(entry.sections, '')}
     <main>
         <article class="content-card">
             <h1>${escapeHtml(cfg.pageTitle)}</h1>
-            <p>${escapeHtml(cfg.intro)}</p>
+            <p data-editable="page-intro">${getPageFieldValue(cfg.pageFile, 'page-intro', escapeHtml(cfg.intro))}</p>
             <div id="${key}Container">
 ${entriesHTML}
             </div>
@@ -1225,7 +1253,7 @@ function generateSourcesPageHTML() {
     <main>
         <article class="content-card">
             <h1>Sources</h1>
-            <p>Transparency matters. Below is a directory of every file — images, PDFs, documents, and videos — referenced across our articles and pages, organized by where they appear.</p>
+            <p data-editable="page-intro">${getPageFieldValue('sources.html', 'page-intro', 'Transparency matters. Below is a directory of every file — images, PDFs, documents, and videos — referenced across our articles and pages, organized by where they appear.')}</p>
             <div id="sourcesTree">
 ${treeHTML}
             </div>
@@ -1878,6 +1906,111 @@ function generateArticleContentFromSections(article) {
     
     return contentHTML;
 }
+
+// ===================================================================
+// Site Pages (edit the plain text on static pages: Home, About, Contact,
+// Articles intro, and the intro paragraphs of the collection pages)
+// ===================================================================
+function prettifyFieldKey(key) {
+    return key.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+async function fetchPageDocument(pageFile) {
+    const response = await fetch(pageFile, { cache: 'no-cache' });
+    if (!response.ok) throw new Error(`Could not load ${pageFile} (HTTP ${response.status})`);
+    const html = await response.text();
+    return new DOMParser().parseFromString(html, 'text/html');
+}
+
+async function loadSitePageFields(pageFile) {
+    const container = document.getElementById('sitePageFieldsContainer');
+    if (!container) return;
+    container.innerHTML = '<p class="no-articles">Loading page text…</p>';
+
+    let doc;
+    try {
+        doc = await fetchPageDocument(pageFile);
+    } catch (err) {
+        container.innerHTML = `<p class="error-message">Could not load ${escapeHtml(pageFile)}. Make sure the admin page is being served from the same folder as the site files (not opened directly as a local file).</p>`;
+        return;
+    }
+
+    const editableEls = Array.from(doc.querySelectorAll('[data-editable]'));
+    if (editableEls.length === 0) {
+        container.innerHTML = '<p class="no-articles">No editable text found on this page.</p>';
+        return;
+    }
+
+    const overrides = getSitePageContent()[pageFile] || {};
+
+    container.innerHTML = editableEls.map(el => {
+        const key = el.getAttribute('data-editable');
+        const label = prettifyFieldKey(key);
+        const currentHTML = overrides[key] !== undefined ? overrides[key] : el.innerHTML.trim();
+        return `
+            <div class="form-group" data-page-field data-field-key="${escapeHtml(key)}">
+                <label>${escapeHtml(label)}</label>
+                ${richTextToolbarHTML()}
+                <div class="section-content" contenteditable="true">${currentHTML}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+function saveSitePageFields(pageFile) {
+    const container = document.getElementById('sitePageFieldsContainer');
+    if (!container) return;
+    container.querySelectorAll('[data-page-field]').forEach(fieldEl => {
+        const key = fieldEl.dataset.fieldKey;
+        const contentEl = fieldEl.querySelector('.section-content');
+        setPageFieldValue(pageFile, key, sanitizeRichHTML(contentEl.innerHTML));
+    });
+}
+
+async function downloadSitePage(pageFile) {
+    saveSitePageFields(pageFile);
+
+    let doc;
+    try {
+        doc = await fetchPageDocument(pageFile);
+    } catch (err) {
+        alert(`Could not load ${pageFile} to generate the updated file.`);
+        return;
+    }
+
+    const overrides = getSitePageContent()[pageFile] || {};
+    doc.querySelectorAll('[data-editable]').forEach(el => {
+        const key = el.getAttribute('data-editable');
+        if (overrides[key] !== undefined) el.innerHTML = overrides[key];
+    });
+
+    downloadArticleFile(pageFile, '<!DOCTYPE html>\n' + doc.documentElement.outerHTML);
+}
+
+const sitePageSelectEl = document.getElementById('sitePageSelect');
+const sitePageMessageEl = document.getElementById('sitePageMessage');
+
+sitePageSelectEl?.addEventListener('change', () => loadSitePageFields(sitePageSelectEl.value));
+
+document.getElementById('saveSitePageBtn')?.addEventListener('click', () => {
+    saveSitePageFields(sitePageSelectEl.value);
+    if (sitePageMessageEl) {
+        sitePageMessageEl.textContent = '✅ Saved! Click "Download Updated Page" to get the file to upload to GitHub.';
+        sitePageMessageEl.style.display = 'block';
+        sitePageMessageEl.style.color = 'var(--muted-teak)';
+        setTimeout(() => { sitePageMessageEl.textContent = ''; }, 8000);
+    }
+});
+
+document.getElementById('downloadSitePageBtn')?.addEventListener('click', async () => {
+    await downloadSitePage(sitePageSelectEl.value);
+    if (sitePageMessageEl) {
+        sitePageMessageEl.textContent = `✅ Downloaded! Upload it to your GitHub repository, replacing the existing ${sitePageSelectEl.value}.`;
+        sitePageMessageEl.style.display = 'block';
+        sitePageMessageEl.style.color = 'var(--muted-teak)';
+        setTimeout(() => { sitePageMessageEl.textContent = ''; }, 15000);
+    }
+});
 
 // Make functions globally accessible
 window.removeSection = removeSection;
