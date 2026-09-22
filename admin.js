@@ -1908,11 +1908,43 @@ function generateArticleContentFromSections(article) {
 }
 
 // ===================================================================
-// Site Pages (edit the plain text on static pages: Home, About, Contact,
-// Articles intro, and the intro paragraphs of the collection pages)
+// Site Pages (edit every piece of hardcoded text on a static page: Home,
+// About, Contact, Articles, Board Meetings, Questions and Responses,
+// Educational Lingo, and Sources). Any tag in EDITABLE_LEAF_SELECTOR found
+// inside <main>, plus the footer copyright line, becomes an editable field -
+// elements don't need a data-editable attribute to be picked up, though any
+// existing data-editable="key" is still honored so older saved overrides keep working.
 // ===================================================================
+const EDITABLE_LEAF_SELECTOR = 'h1, h2, h3, h4, h5, h6, p, li, figcaption, dt, dd, td, th, label, button';
+const EDITABLE_TAG_LABELS = {
+    H1: 'Heading', H2: 'Heading', H3: 'Heading', H4: 'Heading', H5: 'Heading', H6: 'Heading',
+    P: 'Paragraph', LI: 'List Item', FIGCAPTION: 'Caption', DT: 'Term', DD: 'Definition',
+    TD: 'Table Cell', TH: 'Table Header', LABEL: 'Form Label', BUTTON: 'Button'
+};
+
 function prettifyFieldKey(key) {
     return key.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// Finds every editable text element on a page (fetched doc or the live document)
+function collectPageEditableElements(root) {
+    const scope = root.querySelector('main') || root.body || root;
+    const els = Array.from(scope.querySelectorAll(EDITABLE_LEAF_SELECTOR)).filter(el => !el.closest('nav'));
+    const footerP = root.querySelector('footer p');
+    if (footerP) els.push(footerP);
+    return els;
+}
+
+// Reuses an existing data-editable attribute if present, otherwise a stable position-based key
+function editableElementKey(el, index) {
+    return el.getAttribute('data-editable') || `auto-${index}`;
+}
+
+function describeEditableElement(el) {
+    const tagLabel = EDITABLE_TAG_LABELS[el.tagName] || el.tagName;
+    const text = el.textContent.trim().replace(/\s+/g, ' ');
+    const preview = text.length > 60 ? `${text.slice(0, 60)}…` : text;
+    return preview ? `${tagLabel}: ${preview}` : tagLabel;
 }
 
 async function fetchPageDocument(pageFile) {
@@ -1935,7 +1967,7 @@ async function loadSitePageFields(pageFile) {
         return;
     }
 
-    const editableEls = Array.from(doc.querySelectorAll('[data-editable]'));
+    const editableEls = collectPageEditableElements(doc);
     if (editableEls.length === 0) {
         container.innerHTML = '<p class="no-articles">No editable text found on this page.</p>';
         return;
@@ -1943,9 +1975,9 @@ async function loadSitePageFields(pageFile) {
 
     const overrides = getSitePageContent()[pageFile] || {};
 
-    container.innerHTML = editableEls.map(el => {
-        const key = el.getAttribute('data-editable');
-        const label = prettifyFieldKey(key);
+    container.innerHTML = editableEls.map((el, index) => {
+        const key = editableElementKey(el, index);
+        const label = describeEditableElement(el);
         const currentHTML = overrides[key] !== undefined ? overrides[key] : el.innerHTML.trim();
         return `
             <div class="form-group" data-page-field data-field-key="${escapeHtml(key)}">
@@ -1979,8 +2011,8 @@ async function downloadSitePage(pageFile) {
     }
 
     const overrides = getSitePageContent()[pageFile] || {};
-    doc.querySelectorAll('[data-editable]').forEach(el => {
-        const key = el.getAttribute('data-editable');
+    collectPageEditableElements(doc).forEach((el, index) => {
+        const key = editableElementKey(el, index);
         if (overrides[key] !== undefined) el.innerHTML = overrides[key];
     });
 

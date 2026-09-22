@@ -30,9 +30,18 @@
     <!-- Admin Dashboard -->
     <div id="adminDashboard" class="hidden">
         <header>
-            <nav class="navbar">
+            <nav class="navbar admin-navbar">
                 <div class="nav-container">
                     <div class="site-title">South San Education Explained - Admin</div>
+                    <ul class="nav-menu admin-nav-menu">
+                        <li><button class="tab-btn active" data-tab="create">Create Article</button></li>
+                        <li><button class="tab-btn" data-tab="manage">Manage Articles</button></li>
+                        <li><button class="tab-btn" data-tab="boardMeetings">Board Meetings</button></li>
+                        <li><button class="tab-btn" data-tab="qa">Questions and Responses</button></li>
+                        <li><button class="tab-btn" data-tab="lingo">Educational Lingo</button></li>
+                        <li><button class="tab-btn" data-tab="sources">Sources</button></li>
+                        <li><button class="tab-btn" data-tab="sitePages">Site Pages</button></li>
+                    </ul>
                     <button id="logoutBtn" class="logout-btn">Logout</button>
                 </div>
             </nav>
@@ -40,15 +49,6 @@
 
         <main>
             <div class="admin-container">
-                <div class="admin-tabs">
-                    <button class="tab-btn active" data-tab="create">Create Article</button>
-                    <button class="tab-btn" data-tab="manage">Manage Articles</button>
-                    <button class="tab-btn" data-tab="boardMeetings">Board Meetings</button>
-                    <button class="tab-btn" data-tab="qa">Questions and Responses</button>
-                    <button class="tab-btn" data-tab="lingo">Educational Lingo</button>
-                    <button class="tab-btn" data-tab="sources">Sources</button>
-                    <button class="tab-btn" data-tab="sitePages">Site Pages</button>
-                </div>
 
                 <!-- Create Article Tab -->
                 <div id="createTab" class="tab-content active">
@@ -285,7 +285,7 @@
                     <article class="content-card">
                         <h2>Edit Page Text</h2>
                         <p style="color: var(--muted-teak); font-size: 0.9rem; margin-bottom: 1.5rem;">
-                            Update the wording on your site's static pages (Home, About, Contact, and the intro text on Articles, Board Meetings, Questions and Responses, Educational Lingo, and Sources). Changes are saved locally so you can preview them; download the updated page and upload it to GitHub to publish.
+                            Choose a page below to view and edit every piece of hardcoded text on it - headings, paragraphs, list items, form labels, buttons, and the footer. Changes are saved locally so you can preview them; download the updated page and upload it to GitHub to publish.
                         </p>
 
                         <div class="form-group">
@@ -294,11 +294,11 @@
                                 <option value="index.html">Home</option>
                                 <option value="about.html">About</option>
                                 <option value="contact.html">Contact</option>
-                                <option value="articles.html">Articles (intro)</option>
-                                <option value="board-meetings.html">Board Meetings (intro)</option>
-                                <option value="questions-and-responses.html">Questions and Responses (intro)</option>
-                                <option value="educational-lingo.html">Educational Lingo (intro)</option>
-                                <option value="sources.html">Sources (intro)</option>
+                                <option value="articles.html">Articles</option>
+                                <option value="board-meetings.html">Board Meetings</option>
+                                <option value="questions-and-responses.html">Questions and Responses</option>
+                                <option value="educational-lingo.html">Educational Lingo</option>
+                                <option value="sources.html">Sources</option>
                             </select>
                         </div>
 

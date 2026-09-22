@@ -178,6 +178,11 @@ a:hover {
     margin-top: 0;
 }
 
+.article-preview h2 a {
+    color: var(--deep-navy);
+    text-decoration: none;
+}
+
 .article-preview p {
     text-align: left;
 }

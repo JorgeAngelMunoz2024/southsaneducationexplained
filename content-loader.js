@@ -1,17 +1,32 @@
 // Loads Board Meetings, Questions and Responses, Educational Lingo, and Sources
 // content dynamically from localStorage for local preview before publishing.
 
-// Applies admin-edited page text (saved from the "Site Pages" admin tab) to any
-// element on this page marked with data-editable="<key>", so local previews
-// reflect edits before the page is re-downloaded and published.
+// Applies admin-edited page text (saved from the "Site Pages" admin tab) to
+// every editable text element on this page, so local previews reflect edits
+// before the page is re-downloaded and published. Must stay in sync with the
+// element selection logic in admin.js (collectPageEditableElements/editableElementKey).
+const EDITABLE_LEAF_SELECTOR = 'h1, h2, h3, h4, h5, h6, p, li, figcaption, dt, dd, td, th, label, button';
+
+function collectPageEditableElements(root) {
+    const scope = root.querySelector('main') || root.body || root;
+    const els = Array.from(scope.querySelectorAll(EDITABLE_LEAF_SELECTOR)).filter(el => !el.closest('nav'));
+    const footerP = root.querySelector('footer p');
+    if (footerP) els.push(footerP);
+    return els;
+}
+
+function editableElementKey(el, index) {
+    return el.getAttribute('data-editable') || `auto-${index}`;
+}
+
 function applySitePageOverrides() {
     const pageFile = location.pathname.split('/').pop() || 'index.html';
     const allPageContent = JSON.parse(localStorage.getItem('sitePageContent') || '{}');
     const overrides = allPageContent[pageFile];
     if (!overrides) return;
 
-    document.querySelectorAll('[data-editable]').forEach(el => {
-        const key = el.getAttribute('data-editable');
+    collectPageEditableElements(document).forEach((el, index) => {
+        const key = editableElementKey(el, index);
         if (overrides[key] !== undefined) {
             el.innerHTML = overrides[key];
         }
