@@ -89,6 +89,7 @@
                             
                             <button type="button" id="addSectionBtn" class="btn-secondary" style="margin-bottom: 1rem;">+ Add Section</button>
 
+                            <button type="button" id="saveDraftBtn" class="btn-secondary">💾 Save Draft</button>
                             <button type="submit" class="submit-btn">Publish Article</button>
                             <p id="formMessage" class="success-message"></p>
                         </form>
@@ -99,6 +100,10 @@
                 <div id="manageTab" class="tab-content">
                     <article class="content-card">
                         <h2>Manage Articles</h2>
+                        <h3>Drafts</h3>
+                        <div id="draftsList"></div>
+                        <hr style="margin: 2rem 0; border: 1px solid #e0e0e0;">
+                        <h3>Published Articles</h3>
                         <div id="articlesList"></div>
                     </article>
                 </div>

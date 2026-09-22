@@ -56,6 +56,7 @@ function showDashboard() {
     loginScreen.classList.add('hidden');
     adminDashboard.classList.remove('hidden');
     loadArticles();
+    loadDrafts();
     renderLibraryList();
     
     // Add initial section
@@ -79,6 +80,7 @@ tabBtns.forEach(btn => {
         
         if (tabName === 'manage') {
             loadArticles();
+            loadDrafts();
         }
         
         if (COLLECTIONS[tabName]) {
@@ -1262,23 +1264,7 @@ articleForm.addEventListener('submit', (e) => {
     const slug = generateSlug(title);
     
     // Collect all sections
-    const sections = [];
-    const sectionElements = articleSections.querySelectorAll('.article-section');
-    sectionElements.forEach(sectionEl => {
-        const type = sectionEl.querySelector('.section-type').value;
-        const content = getSectionContentValue(sectionEl, type);
-        const author = sectionEl.querySelector('.section-author')?.value || '';
-        const caption = sectionEl.querySelector('.section-caption')?.value || '';
-        const files = JSON.parse(sectionEl.dataset.files || '[]');
-        
-        sections.push({
-            type,
-            content,
-            author,
-            caption,
-            files
-        });
-    });
+    const sections = collectArticleSections();
     
     // Count total files across all sections
     const totalFiles = sections.reduce((sum, section) => sum + (section.files?.length || 0), 0);
@@ -1291,6 +1277,13 @@ articleForm.addEventListener('submit', (e) => {
         articles = articles.filter(a => a.id !== parseInt(editingId));
         localStorage.setItem('articles', JSON.stringify(articles));
         delete articleForm.dataset.editingId;
+    }
+
+    // If this article started as a draft, remove the draft now that it's published
+    const editingDraftId = articleForm.dataset.editingDraftId;
+    if (editingDraftId) {
+        deleteDraft(parseInt(editingDraftId), { skipConfirm: true, skipReload: true });
+        delete articleForm.dataset.editingDraftId;
     }
     
     const article = {
@@ -1350,6 +1343,166 @@ function saveArticle(article) {
     let articles = JSON.parse(localStorage.getItem('articles') || '[]');
     articles.unshift(article); // Add to beginning
     localStorage.setItem('articles', JSON.stringify(articles));
+}
+
+// Read the current article form's sections into an array (shared by publish and save-draft)
+function collectArticleSections() {
+    const sections = [];
+    articleSections.querySelectorAll('.article-section').forEach(sectionEl => {
+        const type = sectionEl.querySelector('.section-type').value;
+        const content = getSectionContentValue(sectionEl, type);
+        const author = sectionEl.querySelector('.section-author')?.value || '';
+        const caption = sectionEl.querySelector('.section-caption')?.value || '';
+        const files = JSON.parse(sectionEl.dataset.files || '[]');
+        sections.push({ type, content, author, caption, files });
+    });
+    return sections;
+}
+
+// ===================================================================
+// Article Drafts (saved separately from published articles)
+// ===================================================================
+const DRAFTS_STORAGE_KEY = 'articleDrafts';
+
+function getDrafts() {
+    return JSON.parse(localStorage.getItem(DRAFTS_STORAGE_KEY) || '[]');
+}
+
+function saveDrafts(drafts) {
+    localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(drafts));
+}
+
+function loadDrafts() {
+    const draftsListEl = document.getElementById('draftsList');
+    if (!draftsListEl) return;
+    const drafts = getDrafts();
+
+    if (drafts.length === 0) {
+        draftsListEl.innerHTML = '<p class="no-articles">No drafts saved.</p>';
+        return;
+    }
+
+    draftsListEl.innerHTML = drafts.map(draft => `
+        <div class="article-preview">
+            <h2 style="color: var(--primary-teak);">${escapeHtml(draft.title || '(untitled draft)')}</h2>
+            <p class="article-meta">Last saved: ${new Date(draft.dateSaved).toLocaleString()}</p>
+            <p>${escapeHtml(draft.excerpt || '')}</p>
+            <div class="article-actions">
+                <button class="btn-small btn-edit" onclick="editDraft(${draft.id})">✏️ Continue Editing</button>
+                <button class="btn-small btn-delete" onclick="deleteDraft(${draft.id})">🗑️ Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function saveCurrentArticleAsDraft() {
+    const title = document.getElementById('articleTitle').value;
+
+    if (!title.trim()) {
+        alert('Please enter a title before saving a draft.');
+        return;
+    }
+
+    const subtitles = getSubtitles('articleSubtitles');
+    const meta = document.getElementById('articleMeta').value;
+    const excerpt = document.getElementById('articleExcerpt').value;
+    const sections = collectArticleSections();
+
+    let drafts = getDrafts();
+    const editingDraftId = articleForm.dataset.editingDraftId;
+    if (editingDraftId) {
+        drafts = drafts.filter(d => d.id !== parseInt(editingDraftId));
+    }
+
+    const draft = {
+        id: editingDraftId ? parseInt(editingDraftId) : Date.now(),
+        title,
+        slug: generateSlug(title),
+        subtitles,
+        meta,
+        excerpt,
+        sections,
+        dateSaved: new Date().toISOString()
+    };
+
+    drafts.unshift(draft);
+    saveDrafts(drafts);
+    articleForm.dataset.editingDraftId = draft.id;
+
+    loadDrafts();
+
+    formMessage.innerHTML = '<strong>💾 Draft saved!</strong> Keep editing or find it later under Manage Articles → Drafts.';
+    formMessage.style.display = 'block';
+    formMessage.style.color = 'var(--muted-teak)';
+    formMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    setTimeout(() => { formMessage.innerHTML = ''; }, 8000);
+}
+
+document.getElementById('saveDraftBtn')?.addEventListener('click', saveCurrentArticleAsDraft);
+
+function editDraft(id) {
+    const draft = getDrafts().find(d => d.id === id);
+    if (!draft) {
+        alert('Draft not found!');
+        return;
+    }
+
+    // Switch to create tab
+    tabBtns.forEach(b => b.classList.remove('active'));
+    tabBtns[0].classList.add('active');
+    tabContents.forEach(content => content.classList.remove('active'));
+    document.getElementById('createTab').classList.add('active');
+
+    articleTitle.value = draft.title || '';
+    urlPreview.textContent = draft.title ? `${generateSlug(draft.title)}.html` : '(auto-generated from title)';
+    setSubtitles('articleSubtitles', draft.subtitles || []);
+    document.getElementById('articleMeta').value = draft.meta || '';
+    document.getElementById('articleExcerpt').value = draft.excerpt || '';
+
+    articleSections.innerHTML = '';
+    sectionCounter = 0;
+
+    (draft.sections || []).forEach(section => {
+        const sectionId = addSection();
+        const sectionDiv = document.getElementById(sectionId);
+
+        const typeSelect = sectionDiv.querySelector('.section-type');
+        typeSelect.value = section.type;
+        updateSectionContent(sectionId, section.type);
+        setSectionContentValue(sectionDiv, section.type, section.content);
+
+        if (section.type === 'quote' && section.author) {
+            const authorInput = sectionDiv.querySelector('.section-author');
+            if (authorInput) authorInput.value = section.author;
+        }
+        if (section.type === 'image-caption' && section.caption) {
+            const captionInput = sectionDiv.querySelector('.section-caption');
+            if (captionInput) captionInput.value = section.caption;
+        }
+        if (section.files && section.files.length > 0) {
+            sectionDiv.dataset.files = JSON.stringify(section.files);
+            refreshSectionFiles(sectionId);
+        }
+    });
+
+    if (articleSections.children.length === 0) addSection();
+
+    delete articleForm.dataset.editingId;
+    articleForm.dataset.editingDraftId = id;
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    formMessage.textContent = 'Editing draft. Click "💾 Save Draft" to keep it as a draft, or "Publish Article" to publish it.';
+    formMessage.style.display = 'block';
+    formMessage.style.color = 'var(--muted-teak)';
+}
+
+function deleteDraft(id, options = {}) {
+    if (!options.skipConfirm && !confirm('Delete this draft?')) return;
+    let drafts = getDrafts();
+    drafts = drafts.filter(d => d.id !== id);
+    saveDrafts(drafts);
+    if (!options.skipReload) loadDrafts();
 }
 
 // Load articles for management
@@ -1517,6 +1670,7 @@ function editArticle(id) {
     
     // Delete the old article on form submit
     articleForm.dataset.editingId = id;
+    delete articleForm.dataset.editingDraftId;
     
     // Scroll to top
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1735,6 +1889,8 @@ window.downloadArticleFile = downloadArticleFile;
 window.viewArticle = viewArticle;
 window.editArticle = editArticle;
 window.deleteArticle = deleteArticle;
+window.editDraft = editDraft;
+window.deleteDraft = deleteDraft;
 window.downloadCollectionPage = downloadCollectionPage;
 window.viewCollectionEntry = viewCollectionEntry;
 window.editCollectionEntry = editCollectionEntry;
