@@ -232,6 +232,19 @@
 
                         <hr style="margin: 2rem 0; border: 1px solid #e0e0e0;">
 
+                        <h3>Media Library</h3>
+                        <p style="color: var(--muted-teak); font-size: 0.9rem; margin-bottom: 1rem;">
+                            Upload images here to list them on the Sources page and get a reusable link. Copy the link, then highlight text in any Paragraph/Heading/Quote field and use the "Add Link" button to reference the image.
+                        </p>
+                        <div class="form-group">
+                            <label>Add Image:</label>
+                            <input type="file" id="sourceLibraryFileInput" accept="image/*,video/*,.pdf,.doc,.docx,.txt,.zip" onchange="handleLibraryFileUpload(this)">
+                            <small>Remember to upload the actual file to the matching folder under <code>/assets/uploads/</code> in your GitHub repository.</small>
+                        </div>
+                        <div id="sourceLibraryList"></div>
+
+                        <hr style="margin: 2rem 0; border: 1px solid #e0e0e0;">
+
                         <h3>Preview</h3>
                         <div id="sourcesPreview"></div>
                     </article>

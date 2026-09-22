@@ -56,6 +56,7 @@ function showDashboard() {
     loginScreen.classList.add('hidden');
     adminDashboard.classList.remove('hidden');
     loadArticles();
+    renderLibraryList();
     
     // Add initial section
     if (articleSections.children.length === 0) {
@@ -90,6 +91,7 @@ tabBtns.forEach(btn => {
         
         if (tabName === 'sources') {
             refreshSourcesPreview();
+            renderLibraryList();
         }
     });
 });
@@ -962,7 +964,124 @@ function setupCollectionForm(key) {
 Object.keys(COLLECTIONS).forEach(setupCollectionForm);
 
 // ===================================================================
-// Sources Directory (auto-populated from all section file attachments)
+// Media Library (standalone images/files uploaded directly to the Sources page)
+// ===================================================================
+const LIBRARY_STORAGE_KEY = 'sourceLibrary';
+
+function getLibraryFiles() {
+    return JSON.parse(localStorage.getItem(LIBRARY_STORAGE_KEY) || '[]');
+}
+
+function saveLibraryFiles(files) {
+    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(files));
+}
+
+function handleLibraryFileUpload(inputElement) {
+    const files = Array.from(inputElement.files);
+    if (files.length === 0) return;
+
+    files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const libraryFiles = getLibraryFiles();
+            libraryFiles.push({
+                id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                name: file.name,
+                size: formatFileSize(file.size),
+                type: file.type,
+                data: event.target.result,
+                category: getFileCategory(file.type, file.name),
+                description: ''
+            });
+            saveLibraryFiles(libraryFiles);
+            renderLibraryList();
+        };
+        reader.readAsDataURL(file);
+    });
+
+    inputElement.value = '';
+}
+
+function renderLibraryList() {
+    const container = document.getElementById('sourceLibraryList');
+    if (!container) return;
+    const files = getLibraryFiles();
+
+    if (files.length === 0) {
+        container.innerHTML = '<p class="no-articles">No images in the library yet. Upload one above to get a reusable link for the "Add Link" text tool.</p>';
+        return;
+    }
+
+    container.innerHTML = files.map(file => {
+        const path = `assets/uploads/${file.category}/${file.name}`;
+        const preview = file.category === 'images'
+            ? `<img src="${file.data}" alt="${escapeHtml(file.name)}" style="max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 4px;">`
+            : `<div class="file-icon-small">${file.category === 'videos' ? '🎥' : '📄'}</div>`;
+
+        return `
+        <div class="section-file-item">
+            <div class="file-preview-row">
+                <div class="file-preview-icon">${preview}</div>
+                <div class="file-preview-info">
+                    <strong>${escapeHtml(file.name)}</strong> (${file.size})
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label style="font-size: 0.85rem;">Description:</label>
+                        <input type="text" class="file-description" value="${escapeHtml(file.description)}"
+                               placeholder="Describe this file..."
+                               onchange="updateLibraryDescription('${file.id}', this.value)">
+                    </div>
+                    <div class="form-group" style="margin-top: 0.5rem;">
+                        <label style="font-size: 0.85rem;">Link to use in "Add Link":</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" class="library-path" value="${escapeHtml(path)}" readonly style="flex: 1;">
+                            <button type="button" class="btn-small" onclick="copyLibraryPath('${file.id}')">📋 Copy</button>
+                        </div>
+                        <small>Paste this path into the "Add Link" dialog to reference this image from any text section.</small>
+                    </div>
+                </div>
+                <button type="button" class="remove-file-btn-small" onclick="removeLibraryFile('${file.id}')">✕</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function updateLibraryDescription(id, description) {
+    const files = getLibraryFiles();
+    const file = files.find(f => f.id === id);
+    if (file) {
+        file.description = description;
+        saveLibraryFiles(files);
+    }
+}
+
+function removeLibraryFile(id) {
+    if (!confirm('Remove this file from the library?')) return;
+    let files = getLibraryFiles();
+    files = files.filter(f => f.id !== id);
+    saveLibraryFiles(files);
+    renderLibraryList();
+    refreshSourcesPreview();
+}
+
+function copyLibraryPath(id) {
+    const files = getLibraryFiles();
+    const file = files.find(f => f.id === id);
+    if (!file) return;
+    const path = `assets/uploads/${file.category}/${file.name}`;
+
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(path).then(() => {
+            alert(`Copied to clipboard:\n${path}`);
+        }).catch(() => {
+            prompt('Copy this path:', path);
+        });
+    } else {
+        prompt('Copy this path:', path);
+    }
+}
+
+// ===================================================================
+// Sources Directory (auto-populated from all section file attachments + Media Library)
 // ===================================================================
 function collectAllSources() {
     const sourceGroups = [
@@ -973,6 +1092,11 @@ function collectAllSources() {
     ];
 
     const tree = [];
+
+    const libraryFiles = getLibraryFiles();
+    if (libraryFiles.length > 0) {
+        tree.push({ label: 'Media Library (Reusable Images)', entries: [{ title: null, link: null, files: libraryFiles }] });
+    }
 
     sourceGroups.forEach(group => {
         const entries = JSON.parse(localStorage.getItem(group.storageKey) || '[]');
@@ -998,14 +1122,17 @@ function collectAllSources() {
 
 function renderSourcesTree(tree) {
     if (tree.length === 0) {
-        return '<p>No files have been attached yet. Attachments added to Articles, Board Meetings, Questions and Responses, or Educational Lingo sections will automatically appear here.</p>';
+        return '<p>No files have been attached yet. Attachments added to Articles, Board Meetings, Questions and Responses, or Educational Lingo sections, or images uploaded to the Media Library, will automatically appear here.</p>';
     }
 
     let html = '<ul class="file-tree">\n';
     tree.forEach(folder => {
         html += `    <li class="file-tree-folder"><span class="file-tree-label">📁 ${escapeHtml(folder.label)}</span>\n        <ul>\n`;
         folder.entries.forEach(entry => {
-            html += `            <li class="file-tree-folder"><span class="file-tree-label">📁 <a href="${entry.link}">${escapeHtml(entry.title)}</a></span>\n                <ul>\n`;
+            const labelHTML = entry.link
+                ? `📁 <a href="${entry.link}">${escapeHtml(entry.title)}</a>`
+                : `📁 ${escapeHtml(entry.title || 'Files')}`;
+            html += `            <li class="file-tree-folder"><span class="file-tree-label">${labelHTML}</span>\n                <ul>\n`;
             entry.files.forEach(file => {
                 const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
                 const path = `assets/uploads/${file.category}/${file.name}`;
@@ -1555,4 +1682,8 @@ window.downloadCollectionPage = downloadCollectionPage;
 window.viewCollectionEntry = viewCollectionEntry;
 window.editCollectionEntry = editCollectionEntry;
 window.deleteCollectionEntry = deleteCollectionEntry;
+window.handleLibraryFileUpload = handleLibraryFileUpload;
+window.updateLibraryDescription = updateLibraryDescription;
+window.removeLibraryFile = removeLibraryFile;
+window.copyLibraryPath = copyLibraryPath;
 
