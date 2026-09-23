@@ -116,25 +116,5 @@
       }
     ],
     "dateCreated": "2026-09-23T18:11:58.053Z"
-  },
-  {
-    "id": 1790133891624,
-    "title": "TESt",
-    "slug": "test",
-    "subtitles": [
-      "subtitle"
-    ],
-    "meta": "September 2026",
-    "excerpt": "summary",
-    "sections": [
-      {
-        "type": "paragraph",
-        "content": "I'm making a test and making <a href=\"https://assets/uploads/documents/Part 2 Understanding Bluebonnet, HQIM, and What Changed at South San.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">Jorge nuts.</a>",
-        "author": "",
-        "caption": "",
-        "files": []
-      }
-    ],
-    "dateCreated": "2026-09-23T03:24:51.624Z"
   }
 ]
