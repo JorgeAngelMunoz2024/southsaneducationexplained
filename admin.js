@@ -4,6 +4,136 @@ const ADMIN_CREDENTIALS = {
     password: 'southsan2026' // Change this password!
 };
 
+// ===================================================================
+// GitHub Auto-Publish
+// Every publish/edit/delete/upload commits the generated file(s) straight
+// to this repo via the GitHub Contents API, so the live site updates
+// immediately instead of requiring a manual download + upload.
+// Falls back to the old "download it yourself" flow if no token is set.
+// ===================================================================
+const GITHUB_OWNER = 'JorgeAngelMunoz2024';
+const GITHUB_REPO = 'southsaneducationexplained';
+const GITHUB_BRANCH = 'main';
+// Session-only: cleared when the tab/browser closes, never written to the repo.
+const GITHUB_TOKEN_KEY = 'ghPublishToken';
+
+function getGithubToken() {
+    return sessionStorage.getItem(GITHUB_TOKEN_KEY) || '';
+}
+
+function isGithubConnected() {
+    return !!getGithubToken();
+}
+
+function utf8ToBase64(str) {
+    return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
+}
+
+async function githubRequest(path, options = {}) {
+    const token = getGithubToken();
+    if (!token) throw new Error('No GitHub token configured.');
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}${path}`, {
+        ...options,
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            ...(options.headers || {})
+        }
+    });
+    if (!res.ok && res.status !== 404) {
+        let detail = '';
+        try { detail = (await res.json()).message || ''; } catch { /* ignore */ }
+        throw new Error(`GitHub API error ${res.status}${detail ? `: ${detail}` : ''}`);
+    }
+    return res;
+}
+
+async function githubGetFileSha(path) {
+    const res = await githubRequest(`/contents/${encodeURI(path)}?ref=${GITHUB_BRANCH}`);
+    if (res.status === 404) return null;
+    return (await res.json()).sha;
+}
+
+// Create or update a file. `content` is UTF-8 text unless isBase64 is true (for binary uploads).
+async function githubPutFile(path, content, message, isBase64 = false) {
+    const sha = await githubGetFileSha(path);
+    const body = {
+        message,
+        content: isBase64 ? content : utf8ToBase64(content),
+        branch: GITHUB_BRANCH
+    };
+    if (sha) body.sha = sha;
+    const res = await githubRequest(`/contents/${encodeURI(path)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    return res.json();
+}
+
+async function githubDeleteFile(path, message) {
+    const sha = await githubGetFileSha(path);
+    if (!sha) return; // already gone
+    await githubRequest(`/contents/${encodeURI(path)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, sha, branch: GITHUB_BRANCH })
+    });
+}
+
+// Reads a manifest already live on the site (public file, no token needed)
+async function fetchManifest(path) {
+    try {
+        const res = await fetch(path, { cache: 'no-cache' });
+        if (!res.ok) return null;
+        return await res.json();
+    } catch {
+        return null;
+    }
+}
+
+// Maps each localStorage collection to the JSON file that's the durable,
+// cross-browser source of truth for it once published.
+const MANIFEST_PATHS = {
+    articles: 'data/articles.json',
+    boardMeetings: 'data/boardMeetings.json',
+    qaEntries: 'data/qa.json',
+    lingoEntries: 'data/lingo.json',
+    sourceLibrary: 'data/library.json'
+};
+
+// Pulls down whatever's actually published so a fresh browser/device (or one
+// whose localStorage never had this data) sees real content, not "no articles yet".
+async function syncFromPublished() {
+    await Promise.all(Object.entries(MANIFEST_PATHS).map(async ([storageKey, path]) => {
+        const remote = await fetchManifest(path);
+        if (Array.isArray(remote)) {
+            localStorage.setItem(storageKey, JSON.stringify(remote));
+        }
+    }));
+}
+
+async function publishManifest(storageKey, message) {
+    const data = JSON.parse(localStorage.getItem(storageKey) || '[]');
+    await githubPutFile(MANIFEST_PATHS[storageKey], JSON.stringify(data, null, 2), message);
+}
+
+// Commits any file attachments in these sections that haven't been uploaded yet
+// (data: URL present = came from this browser session's file picker).
+async function publishSectionFiles(sections) {
+    for (const section of sections || []) {
+        for (const file of section.files || []) {
+            if (!file.data || !file.data.startsWith('data:')) continue;
+            const base64 = file.data.split(',')[1];
+            await githubPutFile(`assets/uploads/${file.category}/${file.name}`, base64, `Upload attachment: ${file.name}`, true);
+        }
+    }
+}
+
+function githubStatusMessage(err) {
+    return `⚠️ Saved locally, but publishing to GitHub failed: ${err.message}. Your work is safe — try again, or use the Download button below to upload it manually.`;
+}
+
 // DOM Elements
 const loginScreen = document.getElementById('loginScreen');
 const adminDashboard = document.getElementById('adminDashboard');
@@ -46,10 +176,39 @@ logoutBtn.addEventListener('click', () => {
     loginForm.reset();
 });
 
+// GitHub token connect/disconnect (session-only; never written to the repo)
+function updateGithubStatusUI() {
+    const btn = document.getElementById('githubStatusBtn');
+    if (!btn) return;
+    btn.textContent = isGithubConnected() ? '✅ GitHub Connected' : '🔗 Connect GitHub';
+}
+
+document.getElementById('githubStatusBtn')?.addEventListener('click', () => {
+    if (isGithubConnected()) {
+        if (confirm('Disconnect GitHub? New admin actions will go back to manual download/upload until you reconnect.')) {
+            sessionStorage.removeItem(GITHUB_TOKEN_KEY);
+            updateGithubStatusUI();
+        }
+        return;
+    }
+    const token = prompt(
+        'Paste a GitHub Personal Access Token to publish changes live automatically.\n\n' +
+        'Use a FINE-GRAINED token scoped only to the "southsaneducationexplained" repo with ' +
+        '"Contents: Read and write" permission — nothing broader. It is kept only in this ' +
+        'browser tab\'s memory (never saved to the repo) and is cleared when you close the tab.'
+    );
+    if (token && token.trim()) {
+        sessionStorage.setItem(GITHUB_TOKEN_KEY, token.trim());
+        updateGithubStatusUI();
+    }
+});
+
 // Show dashboard
-function showDashboard() {
+async function showDashboard() {
     loginScreen.classList.add('hidden');
     adminDashboard.classList.remove('hidden');
+    updateGithubStatusUI();
+    await syncFromPublished();
     loadArticles();
     loadDrafts();
     renderLibraryList();
@@ -874,12 +1033,21 @@ function editCollectionEntry(key, id) {
     msgEl.style.color = 'var(--muted-teak)';
 }
 
-function deleteCollectionEntry(key, id) {
-    if (confirm('Are you sure you want to delete this entry?')) {
-        let entries = getCollectionEntries(key);
-        entries = entries.filter(e => e.id !== id);
-        saveCollectionEntries(key, entries);
-        loadCollectionList(key);
+async function deleteCollectionEntry(key, id) {
+    if (!confirm('Are you sure you want to delete this entry?')) return;
+    let entries = getCollectionEntries(key);
+    entries = entries.filter(e => e.id !== id);
+    saveCollectionEntries(key, entries);
+    loadCollectionList(key);
+
+    if (isGithubConnected()) {
+        const cfg = COLLECTIONS[key];
+        try {
+            await publishManifest(cfg.storageKey, `Update ${cfg.pageTitle} manifest: delete entry`);
+            await githubPutFile(cfg.pageFile, generateCollectionPageHTML(key), `Update ${cfg.pageTitle}: delete entry`);
+        } catch (err) {
+            alert(`Deleted locally, but the live site update failed: ${err.message}`);
+        }
     }
 }
 
@@ -973,7 +1141,7 @@ function setupCollectionForm(key) {
         addSubtitleField(cfg.subtitlesId);
     });
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const title = document.getElementById(cfg.titleId).value;
@@ -1014,18 +1182,30 @@ function setupCollectionForm(key) {
 
         const totalFiles = sections.reduce((sum, section) => sum + (section.files?.length || 0), 0);
 
-        messageEl.innerHTML = `
-            <strong>✅ Saved!</strong><br><br>
-            <button type="button" onclick="downloadCollectionPage('${key}')" class="submit-btn" style="font-size: 0.9rem; padding: 0.75rem 1.5rem;">
-                📥 Download updated ${cfg.pageFile}
-            </button><br><br>
-            <strong>Next Steps:</strong><br>
-            <small>
-                1. Download the updated page above (it includes all entries)<br>
-                2. Upload it to your GitHub repository, replacing <code>${cfg.pageFile}</code><br>
-                ${totalFiles > 0 ? `3. Upload the ${totalFiles} attached file${totalFiles > 1 ? 's' : ''} to the appropriate folders in <code>/assets/uploads/</code><br>4. Regenerate the Sources page in the Sources tab` : '3. Regenerate the Sources page in the Sources tab if you attached files'}
-            </small>
-        `;
+        if (isGithubConnected()) {
+            messageEl.innerHTML = '<strong>⏳ Publishing to GitHub…</strong>';
+            try {
+                await publishSectionFiles(sections);
+                await publishManifest(cfg.storageKey, `Update ${cfg.pageTitle} manifest: ${title}`);
+                await githubPutFile(cfg.pageFile, generateCollectionPageHTML(key), `Publish ${cfg.pageTitle}: ${title}`);
+                messageEl.innerHTML = `<strong>✅ Published live!</strong> <a href="${cfg.pageFile}" target="_blank">View ${escapeHtml(cfg.pageTitle)}</a>`;
+            } catch (err) {
+                messageEl.innerHTML = githubStatusMessage(err);
+            }
+        } else {
+            messageEl.innerHTML = `
+                <strong>✅ Saved!</strong><br><br>
+                <button type="button" onclick="downloadCollectionPage('${key}')" class="submit-btn" style="font-size: 0.9rem; padding: 0.75rem 1.5rem;">
+                    📥 Download updated ${cfg.pageFile}
+                </button><br><br>
+                <strong>Next Steps:</strong><br>
+                <small>
+                    1. Download the updated page above (it includes all entries)<br>
+                    2. Upload it to your GitHub repository, replacing <code>${cfg.pageFile}</code><br>
+                    ${totalFiles > 0 ? `3. Upload the ${totalFiles} attached file${totalFiles > 1 ? 's' : ''} to the appropriate folders in <code>/assets/uploads/</code><br>4. Regenerate the Sources page in the Sources tab` : '3. Regenerate the Sources page in the Sources tab if you attached files'}
+                </small>
+            `;
+        }
 
         form.reset();
         document.getElementById(cfg.subtitlesId).innerHTML = '';
@@ -1060,9 +1240,9 @@ function handleLibraryFileUpload(inputElement) {
 
     files.forEach(file => {
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             const libraryFiles = getLibraryFiles();
-            libraryFiles.push({
+            const fileEntry = {
                 id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
                 name: file.name,
                 size: formatFileSize(file.size),
@@ -1070,9 +1250,22 @@ function handleLibraryFileUpload(inputElement) {
                 data: event.target.result,
                 category: getFileCategory(file.type, file.name),
                 description: ''
-            });
+            };
+            libraryFiles.push(fileEntry);
             saveLibraryFiles(libraryFiles);
             renderLibraryList();
+
+            if (isGithubConnected()) {
+                try {
+                    const base64 = fileEntry.data.split(',')[1];
+                    await githubPutFile(`assets/uploads/${fileEntry.category}/${fileEntry.name}`, base64, `Upload media: ${fileEntry.name}`, true);
+                    await publishManifest('sourceLibrary', `Update media library manifest: ${fileEntry.name}`);
+                    await githubPutFile('sources.html', generateSourcesPageHTML(), `Regenerate sources page: ${fileEntry.name}`);
+                    refreshSourcesPreview();
+                } catch (err) {
+                    alert(`Uploaded locally, but publishing to GitHub failed: ${err.message}`);
+                }
+            }
         };
         reader.readAsDataURL(file);
     });
@@ -1132,13 +1325,24 @@ function updateLibraryDescription(id, description) {
     }
 }
 
-function removeLibraryFile(id) {
+async function removeLibraryFile(id) {
     if (!confirm('Remove this file from the library?')) return;
     let files = getLibraryFiles();
+    const removed = files.find(f => f.id === id);
     files = files.filter(f => f.id !== id);
     saveLibraryFiles(files);
     renderLibraryList();
     refreshSourcesPreview();
+
+    if (isGithubConnected() && removed) {
+        try {
+            await githubDeleteFile(`assets/uploads/${removed.category}/${removed.name}`, `Remove media: ${removed.name}`);
+            await publishManifest('sourceLibrary', `Update media library manifest: remove ${removed.name}`);
+            await githubPutFile('sources.html', generateSourcesPageHTML(), `Regenerate sources page: remove ${removed.name}`);
+        } catch (err) {
+            alert(`Removed locally, but the live site update failed: ${err.message}`);
+        }
+    }
 }
 
 function copyLibraryPath(id) {
@@ -1268,16 +1472,26 @@ function refreshSourcesPreview() {
     document.getElementById('sourcesPreview').innerHTML = renderSourcesTree(collectAllSources());
 }
 
-document.getElementById('generateSourcesBtn').addEventListener('click', () => {
-    downloadArticleFile('sources.html', generateSourcesPageHTML());
+document.getElementById('generateSourcesBtn').addEventListener('click', async () => {
     refreshSourcesPreview();
-    document.getElementById('sourcesFormMessage').innerHTML =
-        '<strong>✅ sources.html regenerated and downloaded!</strong> Upload it to your GitHub repository root, replacing the existing file.';
-    setTimeout(() => { document.getElementById('sourcesFormMessage').innerHTML = ''; }, 30000);
+    const msgEl = document.getElementById('sourcesFormMessage');
+    if (isGithubConnected()) {
+        msgEl.innerHTML = '<strong>⏳ Publishing to GitHub…</strong>';
+        try {
+            await githubPutFile('sources.html', generateSourcesPageHTML(), 'Regenerate sources page');
+            msgEl.innerHTML = '<strong>✅ Published live!</strong> <a href="sources.html" target="_blank">View sources page</a>';
+        } catch (err) {
+            msgEl.innerHTML = githubStatusMessage(err);
+        }
+    } else {
+        downloadArticleFile('sources.html', generateSourcesPageHTML());
+        msgEl.innerHTML = '<strong>✅ sources.html regenerated and downloaded!</strong> Upload it to your GitHub repository root, replacing the existing file.';
+    }
+    setTimeout(() => { msgEl.innerHTML = ''; }, 30000);
 });
 
 // Article form submission
-articleForm.addEventListener('submit', (e) => {
+articleForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const title = document.getElementById('articleTitle').value;
@@ -1294,12 +1508,14 @@ articleForm.addEventListener('submit', (e) => {
     
     // Check if we're editing an existing article
     const editingId = articleForm.dataset.editingId;
+    const editingSlug = articleForm.dataset.editingSlug;
     if (editingId) {
         // Delete the old version
         let articles = JSON.parse(localStorage.getItem('articles') || '[]');
         articles = articles.filter(a => a.id !== parseInt(editingId));
         localStorage.setItem('articles', JSON.stringify(articles));
         delete articleForm.dataset.editingId;
+        delete articleForm.dataset.editingSlug;
     }
 
     // If this article started as a draft, remove the draft now that it's published
@@ -1325,24 +1541,40 @@ articleForm.addEventListener('submit', (e) => {
     
     // Generate article HTML
     const articleHTML = generateArticleHTML(article);
-    
-    // Show success message with download link
-    formMessage.innerHTML = `
-        <strong>✅ Article created successfully!</strong><br><br>
-        <button type="button" id="downloadArticleBtn" class="submit-btn" style="font-size: 0.9rem; padding: 0.75rem 1.5rem;">
-            📥 Download ${slug}.html
-        </button><br><br>
-        <strong>Next Steps:</strong><br>
-        <small>
-            1. Download the HTML file above<br>
-            2. Upload it to your GitHub repository's <code>/articles/</code> folder<br>
-            ${totalFiles > 0 ? `3. Upload the ${totalFiles} attached file${totalFiles > 1 ? 's' : ''} to the appropriate folders in <code>/assets/uploads/</code><br>` : ''}
-            ${totalFiles > 0 ? `4. Update articles.html to include this article` : '3. Update articles.html to include this article'}
-        </small>
-    `;
-    document.getElementById('downloadArticleBtn').addEventListener('click', () => {
-        downloadArticleFile(`${slug}.html`, articleHTML);
-    });
+
+    if (isGithubConnected()) {
+        formMessage.innerHTML = '<strong>⏳ Publishing to GitHub…</strong>';
+        try {
+            if (editingSlug && editingSlug !== slug) {
+                await githubDeleteFile(`articles/${editingSlug}.html`, `Remove renamed article: ${editingSlug}`);
+            }
+            await publishSectionFiles(sections);
+            await githubPutFile(`articles/${slug}.html`, articleHTML, `Publish article: ${title}`);
+            await publishManifest('articles', `Update articles manifest: ${title}`);
+            await githubPutFile('articles.html', generateArticlesListPageHTML(), `Update articles list: ${title}`);
+            formMessage.innerHTML = `<strong>✅ Published live!</strong> <a href="articles/${slug}.html" target="_blank">View article</a>`;
+        } catch (err) {
+            formMessage.innerHTML = githubStatusMessage(err);
+        }
+    } else {
+        // Show success message with download link
+        formMessage.innerHTML = `
+            <strong>✅ Article created successfully!</strong><br><br>
+            <button type="button" id="downloadArticleBtn" class="submit-btn" style="font-size: 0.9rem; padding: 0.75rem 1.5rem;">
+                📥 Download ${slug}.html
+            </button><br><br>
+            <strong>Next Steps:</strong><br>
+            <small>
+                1. Download the HTML file above<br>
+                2. Upload it to your GitHub repository's <code>/articles/</code> folder<br>
+                ${totalFiles > 0 ? `3. Upload the ${totalFiles} attached file${totalFiles > 1 ? 's' : ''} to the appropriate folders in <code>/assets/uploads/</code><br>` : ''}
+                ${totalFiles > 0 ? `4. Update articles.html to include this article` : '3. Update articles.html to include this article'}
+            </small>
+        `;
+        document.getElementById('downloadArticleBtn').addEventListener('click', () => {
+            downloadArticleFile(`${slug}.html`, articleHTML);
+        });
+    }
     
     // Reset form
     articleForm.reset();
@@ -1617,6 +1849,54 @@ ${sectionsHTML}
 </html>`;
 }
 
+// Regenerates the full articles.html listing page (tiles for every published
+// article) so it can be committed straight to the repo on every publish/edit/delete.
+function generateArticlesListPageHTML() {
+    const articlesArr = JSON.parse(localStorage.getItem('articles') || '[]');
+    const tilesHTML = articlesArr.map(article => `
+                <div class="article-preview">
+                    <h2><a href="articles/${article.slug}.html" style="color: var(--deep-navy); text-decoration: none;">${escapeHtml(article.title)}</a></h2>
+${renderSubtitlesHTML(article.subtitles, '                    ')}                    <p class="article-meta">Published: ${escapeHtml(article.meta || '')}</p>
+                    <p>${escapeHtml(article.excerpt)}</p>
+                    <a href="articles/${article.slug}.html" class="read-more">Read More →</a>
+                </div>`).join('\n');
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Articles - South San Education Explained</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="site-title">South San Education Explained</div>${collectionNavHTML('articles', '')}
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <article class="content-card">
+            <h1>Articles</h1>
+            <p data-editable="articles-intro">${getPageFieldValue('articles.html', 'articles-intro', 'Explore our collection of articles covering various educational topics in South San.')}</p>
+            <div id="articlesContainer">
+${tilesHTML}
+            </div>
+        </article>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 South San Education Explained. All rights reserved.</p>
+    </footer>
+
+    <script src="content-loader.js"></script>
+</body>
+</html>`;
+}
+
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -1693,6 +1973,7 @@ function editArticle(id) {
     
     // Delete the old article on form submit
     articleForm.dataset.editingId = id;
+    articleForm.dataset.editingSlug = article.slug;
     delete articleForm.dataset.editingDraftId;
     
     // Scroll to top
@@ -1703,12 +1984,22 @@ function editArticle(id) {
     formMessage.style.color = 'var(--muted-teak)';
 }
 
-function deleteArticle(id) {
-    if (confirm('Are you sure you want to delete this article?')) {
-        let articles = JSON.parse(localStorage.getItem('articles') || '[]');
-        articles = articles.filter(a => a.id !== id);
-        localStorage.setItem('articles', JSON.stringify(articles));
-        loadArticles();
+async function deleteArticle(id) {
+    if (!confirm('Are you sure you want to delete this article?')) return;
+    let articles = JSON.parse(localStorage.getItem('articles') || '[]');
+    const article = articles.find(a => a.id === id);
+    articles = articles.filter(a => a.id !== id);
+    localStorage.setItem('articles', JSON.stringify(articles));
+    loadArticles();
+
+    if (isGithubConnected() && article) {
+        try {
+            await githubDeleteFile(`articles/${article.slug}.html`, `Delete article: ${article.title}`);
+            await publishManifest('articles', `Update articles manifest: delete ${article.title}`);
+            await githubPutFile('articles.html', generateArticlesListPageHTML(), `Update articles list: delete ${article.title}`);
+        } catch (err) {
+            alert(`Deleted locally, but the live site update failed: ${err.message}`);
+        }
     }
 }
 
@@ -1994,24 +2285,28 @@ function saveSitePageFields(pageFile) {
     });
 }
 
-async function downloadSitePage(pageFile) {
-    saveSitePageFields(pageFile);
-
-    let doc;
-    try {
-        doc = await fetchPageDocument(pageFile);
-    } catch (err) {
-        alert(`Could not load ${pageFile} to generate the updated file.`);
-        return;
-    }
-
+async function buildSitePageHTML(pageFile) {
+    const doc = await fetchPageDocument(pageFile);
     const overrides = getSitePageContent()[pageFile] || {};
     collectPageEditableElements(doc).forEach((el, index) => {
         const key = editableElementKey(el, index);
         if (overrides[key] !== undefined) el.innerHTML = overrides[key];
     });
+    return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
+}
 
-    downloadArticleFile(pageFile, '<!DOCTYPE html>\n' + doc.documentElement.outerHTML);
+async function downloadSitePage(pageFile) {
+    saveSitePageFields(pageFile);
+
+    let html;
+    try {
+        html = await buildSitePageHTML(pageFile);
+    } catch (err) {
+        alert(`Could not load ${pageFile} to generate the updated file.`);
+        return;
+    }
+
+    downloadArticleFile(pageFile, html);
 }
 
 const sitePageSelectEl = document.getElementById('sitePageSelect');
@@ -2019,14 +2314,28 @@ const sitePageMessageEl = document.getElementById('sitePageMessage');
 
 sitePageSelectEl?.addEventListener('change', () => loadSitePageFields(sitePageSelectEl.value));
 
-document.getElementById('saveSitePageBtn')?.addEventListener('click', () => {
+document.getElementById('saveSitePageBtn')?.addEventListener('click', async () => {
     saveSitePageFields(sitePageSelectEl.value);
-    if (sitePageMessageEl) {
+    if (!sitePageMessageEl) return;
+
+    if (isGithubConnected()) {
+        sitePageMessageEl.textContent = '⏳ Publishing to GitHub…';
+        sitePageMessageEl.style.display = 'block';
+        try {
+            const html = await buildSitePageHTML(sitePageSelectEl.value);
+            await githubPutFile(sitePageSelectEl.value, html, `Update page text: ${sitePageSelectEl.value}`);
+            sitePageMessageEl.textContent = `✅ Published live! View ${sitePageSelectEl.value}.`;
+            sitePageMessageEl.style.color = 'var(--muted-teak)';
+        } catch (err) {
+            sitePageMessageEl.textContent = githubStatusMessage(err).replace(/<[^>]+>/g, '');
+            sitePageMessageEl.style.color = 'var(--charcoal)';
+        }
+    } else {
         sitePageMessageEl.textContent = '✅ Saved! Click "Download Updated Page" to get the file to upload to GitHub.';
         sitePageMessageEl.style.display = 'block';
         sitePageMessageEl.style.color = 'var(--muted-teak)';
-        setTimeout(() => { sitePageMessageEl.textContent = ''; }, 8000);
     }
+    setTimeout(() => { sitePageMessageEl.textContent = ''; }, 15000);
 });
 
 document.getElementById('downloadSitePageBtn')?.addEventListener('click', async () => {
