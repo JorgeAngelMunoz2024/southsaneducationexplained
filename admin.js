@@ -1748,6 +1748,33 @@ function saveCurrentArticleAsDraft() {
 
 document.getElementById('saveDraftBtn')?.addEventListener('click', saveCurrentArticleAsDraft);
 
+// Without this, saving a draft then writing another article and clicking "Save
+// Draft" again keeps reusing the same editingDraftId and overwrites the first
+// draft instead of creating a second one — the form has no other way to know
+// the admin wants to start a brand new, unrelated draft.
+function resetArticleForm() {
+    articleForm.reset();
+    delete articleForm.dataset.editingId;
+    delete articleForm.dataset.editingSlug;
+    delete articleForm.dataset.editingDraftId;
+
+    urlPreview.textContent = '(auto-generated from title)';
+    document.getElementById('articleSubtitles').innerHTML = '';
+    articleSections.innerHTML = '';
+    sectionCounter = 0;
+    addSection();
+
+    formMessage.innerHTML = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.getElementById('newArticleBtn')?.addEventListener('click', () => {
+    if (articleForm.dataset.editingDraftId || articleForm.dataset.editingId) {
+        if (!confirm('Discard the current unsaved changes and start a new article?')) return;
+    }
+    resetArticleForm();
+});
+
 function editDraft(id) {
     const draft = getDrafts().find(d => d.id === id);
     if (!draft) {
