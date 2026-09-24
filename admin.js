@@ -46,7 +46,11 @@ async function githubRequest(path, options = {}) {
     const token = getGithubToken();
     if (!token) throw new Error('No GitHub token configured.');
     const { allow404 = false, ...fetchOptions } = options;
+    // `no-store`: without this, the browser can serve a cached response for the sha lookup
+    // GET below, so a write shortly after another write to the same file reads a stale sha
+    // and the following PUT fails with a 409 "does not match" conflict.
     const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}${path}`, {
+        cache: 'no-store',
         ...fetchOptions,
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -77,12 +81,24 @@ async function githubPutFile(path, content, message, isBase64 = false) {
         branch: GITHUB_BRANCH
     };
     if (sha) body.sha = sha;
-    const res = await githubRequest(`/contents/${encodeGithubPath(path)}`, {
+
+    const put = (b) => githubRequest(`/contents/${encodeGithubPath(path)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify(b)
     });
-    return res.json();
+
+    try {
+        return (await put(body)).json();
+    } catch (err) {
+        // A leftover stale sha (e.g. this same file was written moments earlier in the same
+        // "Publish All" run) fails with a 409 conflict; refetch the real current sha and
+        // retry exactly once before giving up.
+        if (!err.message.includes('GitHub API error 409')) throw err;
+        const freshSha = await githubGetFileSha(path);
+        if (freshSha) body.sha = freshSha; else delete body.sha;
+        return (await put(body)).json();
+    }
 }
 
 async function githubDeleteFile(path, message) {
