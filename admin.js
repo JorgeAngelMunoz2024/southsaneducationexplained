@@ -29,18 +29,32 @@ function utf8ToBase64(str) {
     return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
 }
 
+// encodeURI() leaves reserved chars like # ? & unescaped, which truncates the
+// path (or corrupts the query string) when a filename contains them. Encode
+// each path segment individually so any filename maps to the right file.
+function encodeGithubPath(path) {
+    return path.split('/').map(encodeURIComponent).join('/');
+}
+
+// `allow404` opts a caller into treating a 404 as a normal, non-error response
+// (used only by the sha lookup below, where "file doesn't exist yet" is expected).
+// Every other call (PUT/DELETE) must NOT set this, otherwise a real failure —
+// e.g. the token lacking access to this repo, which GitHub reports as 404
+// rather than 403 for fine-grained PATs — gets silently swallowed here and the
+// write is treated as if it succeeded, even though nothing was actually saved.
 async function githubRequest(path, options = {}) {
     const token = getGithubToken();
     if (!token) throw new Error('No GitHub token configured.');
+    const { allow404 = false, ...fetchOptions } = options;
     const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}${path}`, {
-        ...options,
+        ...fetchOptions,
         headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/vnd.github+json',
-            ...(options.headers || {})
+            ...(fetchOptions.headers || {})
         }
     });
-    if (!res.ok && res.status !== 404) {
+    if (!res.ok && !(allow404 && res.status === 404)) {
         let detail = '';
         try { detail = (await res.json()).message || ''; } catch { /* ignore */ }
         throw new Error(`GitHub API error ${res.status}${detail ? `: ${detail}` : ''}`);
@@ -49,7 +63,7 @@ async function githubRequest(path, options = {}) {
 }
 
 async function githubGetFileSha(path) {
-    const res = await githubRequest(`/contents/${encodeURI(path)}?ref=${GITHUB_BRANCH}`);
+    const res = await githubRequest(`/contents/${encodeGithubPath(path)}?ref=${GITHUB_BRANCH}`, { allow404: true });
     if (res.status === 404) return null;
     return (await res.json()).sha;
 }
@@ -63,7 +77,7 @@ async function githubPutFile(path, content, message, isBase64 = false) {
         branch: GITHUB_BRANCH
     };
     if (sha) body.sha = sha;
-    const res = await githubRequest(`/contents/${encodeURI(path)}`, {
+    const res = await githubRequest(`/contents/${encodeGithubPath(path)}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -74,7 +88,7 @@ async function githubPutFile(path, content, message, isBase64 = false) {
 async function githubDeleteFile(path, message) {
     const sha = await githubGetFileSha(path);
     if (!sha) return; // already gone
-    await githubRequest(`/contents/${encodeURI(path)}`, {
+    await githubRequest(`/contents/${encodeGithubPath(path)}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, sha, branch: GITHUB_BRANCH })
@@ -108,7 +122,11 @@ async function syncFromPublished() {
     await Promise.all(Object.entries(MANIFEST_PATHS).map(async ([storageKey, path]) => {
         const remote = await fetchManifest(path);
         if (Array.isArray(remote)) {
-            localStorage.setItem(storageKey, JSON.stringify(remote));
+            // Defensively strip any leftover embedded file data from older, bloated manifests.
+            const cleaned = storageKey === 'sourceLibrary'
+                ? remote.map(stripEntryData)
+                : remote.map(entry => ({ ...entry, sections: stripFileData(entry.sections) }));
+            safeLocalStorageSet(storageKey, JSON.stringify(cleaned));
         }
     }));
 }
@@ -116,6 +134,34 @@ async function syncFromPublished() {
 async function publishManifest(storageKey, message) {
     const data = JSON.parse(localStorage.getItem(storageKey) || '[]');
     await githubPutFile(MANIFEST_PATHS[storageKey], JSON.stringify(data, null, 2), message);
+}
+
+// The uploaded bytes already live at assets/uploads/<category>/<name> once published,
+// so the raw base64 `data:` URL must never be kept in localStorage or the JSON manifests —
+// doing so duplicates every file's full contents there and quickly blows the ~5-10MB
+// localStorage quota, which silently aborts the save (and everything after it, including
+// the actual GitHub publish). Only metadata is safe to persist long-term.
+function stripFileData(sections) {
+    return (sections || []).map(section => ({
+        ...section,
+        files: (section.files || []).map(({ data, ...rest }) => rest)
+    }));
+}
+
+// Same idea for a standalone file entry (Media Library), which isn't wrapped in a section.
+function stripEntryData(entry) {
+    const { data, ...rest } = entry;
+    return rest;
+}
+
+function safeLocalStorageSet(key, value) {
+    try {
+        localStorage.setItem(key, value);
+        return true;
+    } catch (err) {
+        alert(`Could not save locally: ${err.message}. Your browser's storage may be full — try removing some older attachments.`);
+        return false;
+    }
 }
 
 // Commits any file attachments in these sections that haven't been uploaded yet
@@ -650,7 +696,9 @@ function displaySectionFile(sectionId, fileData, fileIndex) {
     
     let previewHTML = '';
     if (fileData.type.startsWith('image/')) {
-        previewHTML = `<img src="${fileData.data}" alt="${fileData.name}" style="max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 4px;">`;
+        // Previously-published attachments won't have `data` (never persisted); fall back to the live path.
+        const src = fileData.data || `assets/uploads/${fileData.category}/${fileData.name}`;
+        previewHTML = `<img src="${src}" alt="${fileData.name}" style="max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 4px;">`;
     } else if (fileData.type.startsWith('video/')) {
         previewHTML = `<div class="file-icon-small">🎥</div>`;
     } else if (fileData.type.includes('pdf')) {
@@ -810,7 +858,7 @@ function getCollectionEntries(key) {
 }
 
 function saveCollectionEntries(key, entries) {
-    localStorage.setItem(COLLECTIONS[key].storageKey, JSON.stringify(entries));
+    safeLocalStorageSet(COLLECTIONS[key].storageKey, JSON.stringify(entries));
 }
 
 // Shared section-array -> published HTML (used for downloadable static pages)
@@ -860,7 +908,7 @@ function renderSectionsForPublish(sections, pathPrefix) {
             html += `                <div class="section-attachments-display">\n`;
             section.files.forEach(file => {
                 const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
-                const path = `${pathPrefix}assets/uploads/${file.category}/${file.name}`;
+                const path = `${pathPrefix}assets/uploads/${file.category}/${encodeGithubPath(file.name)}`;
                 const description = file.description || file.name;
                 html += `                    <div class="attachment-item">\n`;
                 html += `                        <span class="attachment-icon">${icon}</span>\n`;
@@ -1173,7 +1221,7 @@ function setupCollectionForm(key) {
             subtitles,
             meta,
             excerpt,
-            sections,
+            sections: stripFileData(sections),
             dateCreated: new Date().toISOString()
         };
 
@@ -1225,13 +1273,16 @@ Object.keys(COLLECTIONS).forEach(setupCollectionForm);
 // Media Library (standalone images/files uploaded directly to the Sources page)
 // ===================================================================
 const LIBRARY_STORAGE_KEY = 'sourceLibrary';
+// Session-only cache of raw file data for thumbnails, keyed by file id. Never persisted —
+// the durable copy lives at assets/uploads/<category>/<name> once published.
+const libraryPreviewCache = new Map();
 
 function getLibraryFiles() {
     return JSON.parse(localStorage.getItem(LIBRARY_STORAGE_KEY) || '[]');
 }
 
 function saveLibraryFiles(files) {
-    localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(files));
+    safeLocalStorageSet(LIBRARY_STORAGE_KEY, JSON.stringify(files));
 }
 
 function handleLibraryFileUpload(inputElement) {
@@ -1251,7 +1302,8 @@ function handleLibraryFileUpload(inputElement) {
                 category: getFileCategory(file.type, file.name),
                 description: ''
             };
-            libraryFiles.push(fileEntry);
+            libraryPreviewCache.set(fileEntry.id, fileEntry.data);
+            libraryFiles.push(stripEntryData(fileEntry));
             saveLibraryFiles(libraryFiles);
             renderLibraryList();
 
@@ -1286,7 +1338,7 @@ function renderLibraryList() {
     container.innerHTML = files.map(file => {
         const path = `assets/uploads/${file.category}/${file.name}`;
         const preview = file.category === 'images'
-            ? `<img src="${file.data}" alt="${escapeHtml(file.name)}" style="max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 4px;">`
+            ? `<img src="${escapeHtml(libraryPreviewCache.get(file.id) || path)}" alt="${escapeHtml(file.name)}" style="max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 4px;">`
             : `<div class="file-icon-small">${file.category === 'videos' ? '🎥' : '📄'}</div>`;
 
         return `
@@ -1331,6 +1383,7 @@ async function removeLibraryFile(id) {
     const removed = files.find(f => f.id === id);
     files = files.filter(f => f.id !== id);
     saveLibraryFiles(files);
+    libraryPreviewCache.delete(id);
     renderLibraryList();
     refreshSourcesPreview();
 
@@ -1417,7 +1470,7 @@ function renderSourcesTree(tree) {
             html += `            <li class="file-tree-folder"><span class="file-tree-label">${labelHTML}</span>\n                <ul>\n`;
             entry.files.forEach(file => {
                 const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
-                const path = `assets/uploads/${file.category}/${file.name}`;
+                const path = `assets/uploads/${file.category}/${encodeGithubPath(file.name)}`;
                 const desc = file.description ? ` — ${escapeHtml(file.description)}` : '';
                 html += `                    <li class="file-tree-file"><a href="${path}" download>${icon} ${escapeHtml(file.name)}</a>${desc} <span class="file-size">(${file.size})</span></li>\n`;
             });
@@ -1513,7 +1566,7 @@ articleForm.addEventListener('submit', async (e) => {
         // Delete the old version
         let articles = JSON.parse(localStorage.getItem('articles') || '[]');
         articles = articles.filter(a => a.id !== parseInt(editingId));
-        localStorage.setItem('articles', JSON.stringify(articles));
+        safeLocalStorageSet('articles', JSON.stringify(articles));
         delete articleForm.dataset.editingId;
         delete articleForm.dataset.editingSlug;
     }
@@ -1532,7 +1585,7 @@ articleForm.addEventListener('submit', async (e) => {
         subtitles,
         meta,
         excerpt,
-        sections,
+        sections: stripFileData(sections),
         dateCreated: new Date().toISOString()
     };
     
@@ -1597,7 +1650,7 @@ articleForm.addEventListener('submit', async (e) => {
 function saveArticle(article) {
     let articles = JSON.parse(localStorage.getItem('articles') || '[]');
     articles.unshift(article); // Add to beginning
-    localStorage.setItem('articles', JSON.stringify(articles));
+    safeLocalStorageSet('articles', JSON.stringify(articles));
 }
 
 // Read the current article form's sections into an array (shared by publish and save-draft)
