@@ -87,7 +87,10 @@
 <body>
     <div class="preview-bar">
         <span class="name" id="previewName">Preview</span>
-        <a id="downloadLink" download>📥 Download</a>
+        <div style="display: flex; gap: 0.5rem;">
+            <a href="#" id="copyLinkBtn">🔗 Copy Link</a>
+            <a id="downloadLink" download>📥 Download</a>
+        </div>
     </div>
     <div class="preview-stage" id="previewStage"></div>
 
@@ -104,6 +107,26 @@
         const downloadLink = document.getElementById('downloadLink');
         downloadLink.href = src;
         downloadLink.setAttribute('download', name);
+
+        const copyLinkBtn = document.getElementById('copyLinkBtn');
+        if (key) {
+            // A sessionStorage-backed local preview has no shareable published
+            // URL yet (the file hasn't been published to the site).
+            copyLinkBtn.style.display = 'none';
+        } else {
+            // Copies this previewer's own URL (not the raw file) so it can be
+            // pasted into "Add Link" and always open scaled instead of downloading.
+            copyLinkBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const link = location.href;
+                const done = () => alert(`Copied to clipboard:\n${link}`);
+                if (navigator.clipboard?.writeText) {
+                    navigator.clipboard.writeText(link).then(done).catch(() => prompt('Copy this link:', link));
+                } else {
+                    prompt('Copy this link:', link);
+                }
+            });
+        }
 
         const stage = document.getElementById('previewStage');
         const ext = (name.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();

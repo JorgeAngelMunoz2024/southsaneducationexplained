@@ -795,6 +795,14 @@ function refreshSectionFiles(sectionId) {
 // the filename extension so those uploads still get classified correctly.
 const IMAGE_EXTENSIONS = /\.(svg|png|jpe?g|gif|webp|bmp|ico|avif)$/i;
 const VIDEO_EXTENSIONS = /\.(mp4|webm|ogg|mov|avi|mkv)$/i;
+const SITE_ORIGIN = 'https://southsaneducationexplained.org';
+
+// Builds a full, ready-to-paste previewer link for a site asset (used by the
+// Media Library's "Add Link" helper) so pasted links always open scaled in
+// preview.html instead of the raw file.
+function buildPreviewLink(relPath, fileName) {
+    return `${SITE_ORIGIN}/preview.html?src=${encodeURIComponent(relPath)}&name=${encodeURIComponent(fileName)}`;
+}
 
 function getFileCategory(mimeType, fileName) {
     if (mimeType.startsWith('image/') || IMAGE_EXTENSIONS.test(fileName)) return 'images';
@@ -1409,6 +1417,7 @@ function renderLibraryList() {
 
     container.innerHTML = files.map(file => {
         const path = `assets/uploads/${file.category}/${file.name}`;
+        const previewLink = buildPreviewLink(path, file.name);
         const preview = file.category === 'images'
             ? `<img src="${escapeHtml(libraryPreviewCache.get(file.id) || path)}" alt="${escapeHtml(file.name)}" style="max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 4px;">`
             : `<div class="file-icon-small">${file.category === 'videos' ? '🎥' : '📄'}</div>`;
@@ -1428,10 +1437,10 @@ function renderLibraryList() {
                     <div class="form-group" style="margin-top: 0.5rem;">
                         <label style="font-size: 0.85rem;">Link to use in "Add Link":</label>
                         <div style="display: flex; gap: 0.5rem;">
-                            <input type="text" class="library-path" value="${escapeHtml(path)}" readonly style="flex: 1;">
+                            <input type="text" class="library-path" value="${escapeHtml(previewLink)}" readonly style="flex: 1;">
                             <button type="button" class="btn-small" onclick="copyLibraryPath('${file.id}')">📋 Copy</button>
                         </div>
-                        <small>Paste this path into the "Add Link" dialog to reference this image from any text section.</small>
+                        <small>Paste this link into the "Add Link" dialog so it opens in the scaled previewer instead of downloading.</small>
                     </div>
                 </div>
                 <button type="button" class="remove-file-btn-small" onclick="removeLibraryFile('${file.id}')">✕</button>
@@ -1475,15 +1484,16 @@ function copyLibraryPath(id) {
     const file = files.find(f => f.id === id);
     if (!file) return;
     const path = `assets/uploads/${file.category}/${file.name}`;
+    const previewLink = buildPreviewLink(path, file.name);
 
     if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(path).then(() => {
-            alert(`Copied to clipboard:\n${path}`);
+        navigator.clipboard.writeText(previewLink).then(() => {
+            alert(`Copied to clipboard:\n${previewLink}`);
         }).catch(() => {
-            prompt('Copy this path:', path);
+            prompt('Copy this link:', previewLink);
         });
     } else {
-        prompt('Copy this path:', path);
+        prompt('Copy this link:', previewLink);
     }
 }
 
