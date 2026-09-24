@@ -765,6 +765,13 @@ function getFileCategory(mimeType, fileName) {
     return 'documents';
 }
 
+// Images, videos, and PDFs render natively in a browser tab; anything else
+// (docx, zip, etc.) has no in-browser viewer, so the browser will still just
+// download those — there's no way to force a "preview" for those types.
+function isPreviewableFile(file) {
+    return file.category === 'images' || file.category === 'videos' || /\.pdf$/i.test(file.name);
+}
+
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -910,11 +917,13 @@ function renderSectionsForPublish(sections, pathPrefix) {
                 const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
                 const path = `${pathPrefix}assets/uploads/${file.category}/${encodeGithubPath(file.name)}`;
                 const description = file.description || file.name;
+                const linkAttrs = isPreviewableFile(file) ? 'target="_blank" rel="noopener noreferrer"' : 'download';
+                const linkLabel = isPreviewableFile(file) ? '👁️ View' : '📥 Download';
                 html += `                    <div class="attachment-item">\n`;
                 html += `                        <span class="attachment-icon">${icon}</span>\n`;
                 html += `                        <div class="attachment-content">\n`;
                 html += `                            <p>${escapeHtml(description)}</p>\n`;
-                html += `                            <a href="${path}" download class="attachment-download">📥 Download ${escapeHtml(file.name)} (${file.size})</a>\n`;
+                html += `                            <a href="${path}" ${linkAttrs} class="attachment-download">${linkLabel} ${escapeHtml(file.name)} (${file.size})</a>\n`;
                 html += `                        </div>\n`;
                 html += `                    </div>\n`;
             });
@@ -1472,7 +1481,8 @@ function renderSourcesTree(tree) {
                 const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
                 const path = `assets/uploads/${file.category}/${encodeGithubPath(file.name)}`;
                 const desc = file.description ? ` — ${escapeHtml(file.description)}` : '';
-                html += `                    <li class="file-tree-file"><a href="${path}" download>${icon} ${escapeHtml(file.name)}</a>${desc} <span class="file-size">(${file.size})</span></li>\n`;
+                const linkAttrs = isPreviewableFile(file) ? 'target="_blank" rel="noopener noreferrer"' : 'download';
+                html += `                    <li class="file-tree-file"><a href="${path}" ${linkAttrs}>${icon} ${escapeHtml(file.name)}</a>${desc} <span class="file-size">(${file.size})</span></li>\n`;
             });
             html += `                </ul>\n            </li>\n`;
         });

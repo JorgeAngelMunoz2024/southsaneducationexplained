@@ -41,6 +41,12 @@ function escapeHtmlLoader(text) {
     return div.innerHTML;
 }
 
+// Images, videos, and PDFs render natively in a browser tab; anything else has
+// no in-browser viewer, so the browser will still just download those.
+function isPreviewableFile(file) {
+    return file.category === 'images' || file.category === 'videos' || /\.pdf$/i.test(file.name);
+}
+
 // Render an array of sections (with inline embedded file data) into HTML
 function renderSectionsForLoader(sections) {
     if (!sections || sections.length === 0) {
@@ -104,7 +110,9 @@ function renderSectionsForLoader(sections) {
                 const icon = file.category === 'videos' ? '🎥' : '📄';
                 html += `<div class="section-attachments-display" style="margin: 1.5rem 0;">\n    <div class="attachment-item" style="display: flex; align-items: center; padding: 1rem; background: #f8f8f8; border-radius: 8px;">\n        <span class="attachment-icon" style="font-size: 2rem; margin-right: 1rem;">${icon}</span>\n        <div class="attachment-content" style="flex: 1;">\n            <p style="margin: 0; font-weight: 600;">${escapeHtmlLoader(description)}</p>\n            <p style="font-size: 0.85rem; color: var(--muted-teak); margin: 0.25rem 0;">${escapeHtmlLoader(file.name)} (${file.size})</p>\n`;
                 if (file.data) {
-                    html += `            <a href="${file.data}" download="${escapeHtmlLoader(file.name)}" style="color: var(--primary-teak); text-decoration: none; font-size: 0.9rem;">📥 Download</a>\n`;
+                    const linkAttrs = isPreviewableFile(file) ? 'target="_blank" rel="noopener noreferrer"' : `download="${escapeHtmlLoader(file.name)}"`;
+                    const linkLabel = isPreviewableFile(file) ? '👁️ View' : '📥 Download';
+                    html += `            <a href="${file.data}" ${linkAttrs} style="color: var(--primary-teak); text-decoration: none; font-size: 0.9rem;">${linkLabel}</a>\n`;
                 }
                 html += `        </div>\n    </div>\n</div>\n\n`;
             }
@@ -178,7 +186,8 @@ function loadSourcesTree() {
                 const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
                 const path = `assets/uploads/${file.category}/${file.name}`;
                 const desc = file.description ? ` — ${escapeHtmlLoader(file.description)}` : '';
-                html += `                    <li class="file-tree-file"><a href="${path}" download>${icon} ${escapeHtmlLoader(file.name)}</a>${desc} <span class="file-size">(${file.size})</span></li>\n`;
+                const linkAttrs = isPreviewableFile(file) ? 'target="_blank" rel="noopener noreferrer"' : 'download';
+                html += `                    <li class="file-tree-file"><a href="${path}" ${linkAttrs}>${icon} ${escapeHtmlLoader(file.name)}</a>${desc} <span class="file-size">(${file.size})</span></li>\n`;
             });
             html += `                </ul>\n            </li>\n`;
         });
