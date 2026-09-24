@@ -74,41 +74,54 @@ async function githubGetFileSha(path) {
 
 // Create or update a file. `content` is UTF-8 text unless isBase64 is true (for binary uploads).
 async function githubPutFile(path, content, message, isBase64 = false) {
-    const sha = await githubGetFileSha(path);
-    const body = {
-        message,
-        content: isBase64 ? content : utf8ToBase64(content),
-        branch: GITHUB_BRANCH
-    };
-    if (sha) body.sha = sha;
-
-    const put = (b) => githubRequest(`/contents/${encodeGithubPath(path)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(b)
+    return withGithubConflictRetry(async () => {
+        const sha = await githubGetFileSha(path);
+        const body = {
+            message,
+            content: isBase64 ? content : utf8ToBase64(content),
+            branch: GITHUB_BRANCH
+        };
+        if (sha) body.sha = sha;
+        const res = await githubRequest(`/contents/${encodeGithubPath(path)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        return res.json();
     });
-
-    try {
-        return (await put(body)).json();
-    } catch (err) {
-        // A leftover stale sha (e.g. this same file was written moments earlier in the same
-        // "Publish All" run) fails with a 409 conflict; refetch the real current sha and
-        // retry exactly once before giving up.
-        if (!err.message.includes('GitHub API error 409')) throw err;
-        const freshSha = await githubGetFileSha(path);
-        if (freshSha) body.sha = freshSha; else delete body.sha;
-        return (await put(body)).json();
-    }
 }
 
 async function githubDeleteFile(path, message) {
-    const sha = await githubGetFileSha(path);
-    if (!sha) return; // already gone
-    await githubRequest(`/contents/${encodeGithubPath(path)}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, sha, branch: GITHUB_BRANCH })
+    await withGithubConflictRetry(async () => {
+        const sha = await githubGetFileSha(path);
+        if (!sha) return; // already gone
+        await githubRequest(`/contents/${encodeGithubPath(path)}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message, sha, branch: GITHUB_BRANCH })
+        });
     });
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// GitHub's Contents API can keep returning a stale sha across several consecutive reads
+// right after a write (replication lag), so one immediate retry isn't always enough —
+// refetch the sha fresh on every attempt and back off a bit longer each time.
+async function withGithubConflictRetry(action, maxAttempts = 4) {
+    let lastErr;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (attempt > 0) await sleep(400 * attempt);
+        try {
+            return await action();
+        } catch (err) {
+            if (!err.message.includes('GitHub API error 409')) throw err;
+            lastErr = err;
+        }
+    }
+    throw lastErr;
 }
 
 // Reads a manifest already live on the site (public file, no token needed)
@@ -123,13 +136,15 @@ async function fetchManifest(path) {
 }
 
 // Maps each localStorage collection to the JSON file that's the durable,
-// cross-browser source of truth for it once published.
+// cross-browser source of truth for it once published. articleDrafts is included
+// so in-progress drafts are visible to any admin, not just the browser that saved them.
 const MANIFEST_PATHS = {
     articles: 'data/articles.json',
     boardMeetings: 'data/boardMeetings.json',
     qaEntries: 'data/qa.json',
     lingoEntries: 'data/lingo.json',
-    sourceLibrary: 'data/library.json'
+    sourceLibrary: 'data/library.json',
+    articleDrafts: 'data/drafts.json'
 };
 
 // Pulls down whatever's actually published so a fresh browser/device (or one
@@ -1124,36 +1139,33 @@ async function deleteCollectionEntry(key, id) {
     }
 }
 
-async function viewCollectionEntry(key, id) {
-    const entries = getCollectionEntries(key);
-    const entry = entries.find(e => e.id === id);
-
-    if (!entry) {
-        alert('Entry not found!');
-        return;
-    }
-
-    const contentHTML = generateArticleContentFromSections(entry);
-
-    let cssContent = '';
-    let cssLoaded = false;
-    try {
-        const response = await fetch('styles.css', { cache: 'no-cache' });
-        if (response.ok) {
-            cssContent = await response.text();
-            cssLoaded = true;
+// Preview windows need BOTH stylesheets inlined: styles.css for the base site layout, and
+// admin-styles.css for the section/attachment/file-tree components used in generated content
+// (those classes live only in admin-styles.css — omitting it is why previews used to render
+// looking like a bare unstyled HTML file instead of matching the live site).
+async function fetchPreviewCSS() {
+    const files = await Promise.all(['styles.css', 'admin-styles.css'].map(async (file) => {
+        try {
+            const res = await fetch(file, { cache: 'no-cache' });
+            return res.ok ? await res.text() : '';
+        } catch (e) {
+            console.error(`Failed to load ${file}:`, e);
+            return '';
         }
-    } catch (e) {
-        console.error('Failed to load CSS:', e);
-    }
+    }));
+    return files.join('\n');
+}
 
-    const previewHTML = `<!DOCTYPE html>
+function buildPreviewPageHTML({ title, subtitles, metaHTML, contentHTML, activeNavKey, cssText }) {
+    const navItem = (key, label) =>
+        `<li><a href="#" onclick="window.close(); return false;"${key === activeNavKey ? ' class="active"' : ''}>${label}</a></li>`;
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>${escapeHtml(entry.title)} - South San Education Explained</title>
-    ${cssLoaded ? `<style>${cssContent}</style>` : '<link rel="stylesheet" href="styles.css">'}
+    <title>${escapeHtml(title)} - South San Education Explained</title>
+    ${cssText ? `<style>${cssText}</style>` : '<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="admin-styles.css">'}
 </head>
 <body>
     <header>
@@ -1161,14 +1173,14 @@ async function viewCollectionEntry(key, id) {
             <div class="nav-container">
                 <div class="site-title">South San Education Explained - Preview</div>
                 <ul class="nav-menu">
-                    <li><a href="#" onclick="window.close(); return false;">Home</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">Articles</a></li>
-                    <li><a href="#" onclick="window.close(); return false;"${key === 'boardMeetings' ? ' class="active"' : ''}>Board Meetings</a></li>
-                    <li><a href="#" onclick="window.close(); return false;"${key === 'qa' ? ' class="active"' : ''}>Questions and Responses</a></li>
-                    <li><a href="#" onclick="window.close(); return false;"${key === 'lingo' ? ' class="active"' : ''}>Educational Lingo</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">Sources</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">About</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">Contact</a></li>
+                    ${navItem(null, 'Home')}
+                    ${navItem('articles', 'Articles')}
+                    ${navItem('boardMeetings', 'Board Meetings')}
+                    ${navItem('qa', 'Questions and Responses')}
+                    ${navItem('lingo', 'Educational Lingo')}
+                    ${navItem('sources', 'Sources')}
+                    ${navItem(null, 'About')}
+                    ${navItem(null, 'Contact')}
                 </ul>
             </div>
         </nav>
@@ -1176,8 +1188,8 @@ async function viewCollectionEntry(key, id) {
 
     <main>
         <article class="content-card">
-            <h1>${escapeHtml(entry.title)}</h1>
-${renderSubtitlesHTML(entry.subtitles, '            ')}            ${entry.meta ? `<p class="article-meta">${escapeHtml(entry.meta)}</p>` : ''}
+            <h1>${escapeHtml(title)}</h1>
+${renderSubtitlesHTML(subtitles, '            ')}            ${metaHTML}
             <div class="article-content">
                 ${contentHTML}
             </div>
@@ -1192,13 +1204,38 @@ ${renderSubtitlesHTML(entry.subtitles, '            ')}            ${entry.meta 
     </footer>
 </body>
 </html>`;
+}
 
-    const blob = new Blob([previewHTML], { type: 'text/html;charset=utf-8' });
+function openPreviewWindow(html) {
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const win = window.open(url, '_blank');
     if (win) {
         setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
+}
+
+async function viewCollectionEntry(key, id) {
+    const entries = getCollectionEntries(key);
+    const entry = entries.find(e => e.id === id);
+
+    if (!entry) {
+        alert('Entry not found!');
+        return;
+    }
+
+    const contentHTML = generateArticleContentFromSections(entry);
+    const cssText = await fetchPreviewCSS();
+    const metaHTML = entry.meta ? `<p class="article-meta">${escapeHtml(entry.meta)}</p>` : '';
+
+    openPreviewWindow(buildPreviewPageHTML({
+        title: entry.title,
+        subtitles: entry.subtitles,
+        metaHTML,
+        contentHTML,
+        activeNavKey: key,
+        cssText
+    }));
 }
 
 function setupCollectionForm(key) {
@@ -1722,11 +1759,38 @@ function loadDrafts() {
             <p class="article-meta">Last saved: ${new Date(draft.dateSaved).toLocaleString()}</p>
             <p>${escapeHtml(draft.excerpt || '')}</p>
             <div class="article-actions">
+                <button class="btn-small" onclick="previewDraft(${draft.id})" style="background-color: var(--primary-teak);">👁️ Preview</button>
                 <button class="btn-small btn-edit" onclick="editDraft(${draft.id})">✏️ Continue Editing</button>
                 <button class="btn-small btn-delete" onclick="deleteDraft(${draft.id})">🗑️ Delete</button>
             </div>
         </div>
     `).join('');
+}
+
+// Draft attachments still carry their raw `data:` bytes (unlike published entries, whose data
+// is stripped once uploaded), so this renders inline images/video/PDF previews same as a
+// published article would, without needing anything to be uploaded to GitHub first.
+async function previewDraft(id) {
+    const draft = getDrafts().find(d => d.id === id);
+    if (!draft) {
+        alert('Draft not found!');
+        return;
+    }
+
+    const contentHTML = generateArticleContentFromSections(draft);
+    const cssText = await fetchPreviewCSS();
+    const metaHTML = draft.meta
+        ? `<p class="article-meta">Published: ${escapeHtml(draft.meta)}</p>`
+        : '<p class="article-meta" style="font-style: italic;">Draft — not yet published</p>';
+
+    openPreviewWindow(buildPreviewPageHTML({
+        title: draft.title || '(untitled draft)',
+        subtitles: draft.subtitles,
+        metaHTML,
+        contentHTML,
+        activeNavKey: 'articles',
+        cssText
+    }));
 }
 
 function saveCurrentArticleAsDraft() {
@@ -2119,79 +2183,17 @@ async function viewArticle(id) {
         return;
     }
     
-    // Generate content from sections
-    const articleContent = generateArticleContentFromSections(article);
-    
-    // Fetch CSS content to inline it for blob preview
-    let cssContent = '';
-    let cssLoaded = false;
-    
-    try {
-        const response = await fetch('styles.css', { cache: 'no-cache' });
-        if (response.ok) {
-            cssContent = await response.text();
-            cssLoaded = true;
-        }
-    } catch (e) {
-        console.error('Failed to load CSS:', e);
-    }
-    
-    // Generate full article HTML with inlined CSS for preview
-    const articleHTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>${escapeHtml(article.title)} - South San Education Explained</title>
-    ${cssLoaded ? `<style>${cssContent}</style>` : '<link rel="stylesheet" href="styles.css">'}
-</head>
-<body>
-    <header>
-        <nav class="navbar">
-            <div class="nav-container">
-                <div class="site-title">South San Education Explained - Preview</div>
-                <ul class="nav-menu">
-                    <li><a href="#" onclick="window.close(); return false;">Home</a></li>
-                    <li><a href="#" onclick="window.close(); return false;" class="active">Articles</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">Board Meetings</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">Questions and Responses</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">Educational Lingo</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">Sources</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">About</a></li>
-                    <li><a href="#" onclick="window.close(); return false;">Contact</a></li>
-                </ul>
-            </div>
-        </nav>
-    </header>
+    const contentHTML = generateArticleContentFromSections(article);
+    const cssText = await fetchPreviewCSS();
 
-    <main>
-        <article class="content-card">
-            <h1>${escapeHtml(article.title)}</h1>
-${renderSubtitlesHTML(article.subtitles, '            ')}            <p class="article-meta">Published: ${escapeHtml(article.meta)}</p>
-            <div class="article-content">
-                ${articleContent}
-            </div>
-            <div style="margin-top: 3rem; text-align: center;">
-                <a href="#" onclick="window.close(); return false;" style="color: var(--muted-teak); font-weight: 600;">← Close Preview</a>
-            </div>
-        </article>
-    </main>
-
-    <footer>
-        <p>&copy; 2026 South San Education Explained. All rights reserved.</p>
-    </footer>
-</body>
-</html>`;
-    
-    // Open in new tab
-    const blob = new Blob([articleHTML], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const win = window.open(url, '_blank');
-    
-    // Clean up blob URL after window opens
-    if (win) {
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
-    }
+    openPreviewWindow(buildPreviewPageHTML({
+        title: article.title,
+        subtitles: article.subtitles,
+        metaHTML: `<p class="article-meta">Published: ${escapeHtml(article.meta)}</p>`,
+        contentHTML,
+        activeNavKey: 'articles',
+        cssText
+    }));
 }
 
 // Generate article content from sections (for preview)
@@ -2505,6 +2507,20 @@ async function publishEverythingToGitHub() {
         }
     }
 
+    // Drafts have no generated page of their own, but publishing the manifest lets
+    // any admin (any browser) see what everyone else is currently working on.
+    try {
+        const drafts = getDrafts();
+        for (const draft of drafts) {
+            await publishSectionFiles(draft.sections);
+        }
+        saveDrafts(drafts.map(d => ({ ...d, sections: stripFileData(d.sections) })));
+        await publishManifest('articleDrafts', 'Republish: article drafts');
+        results.push(`✅ Drafts (${drafts.length})`);
+    } catch (err) {
+        results.push(`❌ Drafts: ${err.message}`);
+    }
+
     return results;
 }
 
@@ -2541,6 +2557,7 @@ window.viewArticle = viewArticle;
 window.editArticle = editArticle;
 window.deleteArticle = deleteArticle;
 window.editDraft = editDraft;
+window.previewDraft = previewDraft;
 window.deleteDraft = deleteDraft;
 window.downloadCollectionPage = downloadCollectionPage;
 window.viewCollectionEntry = viewCollectionEntry;
