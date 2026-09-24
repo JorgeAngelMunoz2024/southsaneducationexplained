@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Preview</title>
+<style>
+    * { box-sizing: border-box; }
+    html, body {
+        margin: 0;
+        height: 100%;
+        background: #1c1c1c;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    body { display: flex; flex-direction: column; min-height: 100vh; }
+    .preview-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 1.25rem;
+        background: #262626;
+        color: #f2f2f2;
+        flex-wrap: wrap;
+    }
+    .preview-bar .name { font-size: 0.95rem; word-break: break-all; }
+    .preview-bar a {
+        color: #fff;
+        background: #3a7d63;
+        padding: 0.4rem 0.9rem;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    .preview-bar a:hover { background: #2f6a53; }
+    .preview-stage {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: auto;
+        padding: 1.5rem;
+    }
+    .preview-stage img,
+    .preview-stage video {
+        max-width: 100%;
+        max-height: 85vh;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        background: #fff;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        cursor: zoom-in;
+    }
+    .preview-stage img.zoomed,
+    .preview-stage video.zoomed {
+        max-width: none;
+        max-height: none;
+        cursor: zoom-out;
+    }
+    .preview-stage iframe {
+        width: 100%;
+        height: 85vh;
+        border: 0;
+        background: #fff;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+    .preview-error { color: #f2f2f2; text-align: center; }
+    .preview-error a { color: #7fd6b0; }
+</style>
+</head>
+<body>
+    <div class="preview-bar">
+        <span class="name" id="previewName">Preview</span>
+        <a id="downloadLink" download>📥 Download</a>
+    </div>
+    <div class="preview-stage" id="previewStage"></div>
+
+    <script>
+        // Loaded either from a "src" path (published files) or a "key" pointing
+        // at a data URL stashed in sessionStorage (unpublished local previews,
+        // since data URLs can be too large to pass safely in a query string).
+        const params = new URLSearchParams(location.search);
+        const key = params.get('key');
+        const src = key ? (sessionStorage.getItem(key) || '') : (params.get('src') || '');
+        const name = params.get('name') || decodeURIComponent((params.get('src') || '').split('/').pop() || 'File');
+
+        document.getElementById('previewName').textContent = name;
+        const downloadLink = document.getElementById('downloadLink');
+        downloadLink.href = src;
+        downloadLink.setAttribute('download', name);
+
+        const stage = document.getElementById('previewStage');
+        const ext = (name.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
+        const imageExts = ['svg', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif'];
+        const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'];
+
+        if (!src) {
+            stage.innerHTML = '<p class="preview-error">No file specified.</p>';
+        } else if (ext === 'pdf') {
+            const iframe = document.createElement('iframe');
+            iframe.src = src;
+            iframe.title = name;
+            stage.appendChild(iframe);
+        } else if (videoExts.includes(ext)) {
+            const video = document.createElement('video');
+            video.src = src;
+            video.controls = true;
+            video.addEventListener('click', () => video.classList.toggle('zoomed'));
+            stage.appendChild(video);
+        } else if (imageExts.includes(ext)) {
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = name;
+            img.title = 'Click to toggle full size';
+            img.addEventListener('click', () => img.classList.toggle('zoomed'));
+            stage.appendChild(img);
+        } else {
+            stage.innerHTML = `<p class="preview-error">Preview not available for this file type.<br><a href="${src}" download="${name}">Download instead</a></p>`;
+        }
+    </script>
+</body>
+</html>

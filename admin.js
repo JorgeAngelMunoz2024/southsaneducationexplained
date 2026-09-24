@@ -953,15 +953,18 @@ function renderSectionsForPublish(sections, pathPrefix) {
             html += `                <div class="section-attachments-display">\n`;
             section.files.forEach(file => {
                 const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
-                const path = `${pathPrefix}assets/uploads/${file.category}/${encodeGithubPath(file.name)}`;
+                const relPath = `assets/uploads/${file.category}/${encodeGithubPath(file.name)}`;
+                const path = `${pathPrefix}${relPath}`;
                 const description = file.description || file.name;
-                const linkAttrs = isPreviewableFile(file) ? 'target="_blank" rel="noopener noreferrer"' : 'download';
-                const linkLabel = isPreviewableFile(file) ? '👁️ View' : '📥 Download';
+                const previewable = isPreviewableFile(file);
+                const href = previewable ? `${pathPrefix}preview.html?src=${encodeURIComponent(relPath)}&name=${encodeURIComponent(file.name)}` : path;
+                const linkAttrs = previewable ? 'target="_blank" rel="noopener noreferrer"' : 'download';
+                const linkLabel = previewable ? '👁️ View' : '📥 Download';
                 html += `                    <div class="attachment-item">\n`;
                 html += `                        <span class="attachment-icon">${icon}</span>\n`;
                 html += `                        <div class="attachment-content">\n`;
                 html += `                            <p>${escapeHtml(description)}</p>\n`;
-                html += `                            <a href="${path}" ${linkAttrs} class="attachment-download">${linkLabel} ${escapeHtml(file.name)} (${file.size})</a>\n`;
+                html += `                            <a href="${href}" ${linkAttrs} class="attachment-download">${linkLabel} ${escapeHtml(file.name)} (${file.size})</a>\n`;
                 html += `                        </div>\n`;
                 html += `                    </div>\n`;
             });
@@ -1539,10 +1542,12 @@ function renderSourcesTree(tree) {
             html += `            <li class="file-tree-folder"><span class="file-tree-label">${labelHTML}</span>\n                <ul>\n`;
             entry.files.forEach(file => {
                 const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
-                const path = `assets/uploads/${file.category}/${encodeGithubPath(file.name)}`;
+                const relPath = `assets/uploads/${file.category}/${encodeGithubPath(file.name)}`;
                 const desc = file.description ? ` — ${escapeHtml(file.description)}` : '';
-                const linkAttrs = isPreviewableFile(file) ? 'target="_blank" rel="noopener noreferrer"' : 'download';
-                html += `                    <li class="file-tree-file"><a href="${path}" ${linkAttrs}>${icon} ${escapeHtml(file.name)}</a>${desc} <span class="file-size">(${file.size})</span></li>\n`;
+                const previewable = isPreviewableFile(file);
+                const href = previewable ? `preview.html?src=${encodeURIComponent(relPath)}&name=${encodeURIComponent(file.name)}` : relPath;
+                const linkAttrs = previewable ? 'target="_blank" rel="noopener noreferrer"' : 'download';
+                html += `                    <li class="file-tree-file"><a href="${href}" ${linkAttrs}>${icon} ${escapeHtml(file.name)}</a>${desc} <span class="file-size">(${file.size})</span></li>\n`;
             });
             html += `                </ul>\n            </li>\n`;
         });

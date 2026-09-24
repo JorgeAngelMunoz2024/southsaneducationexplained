@@ -9,7 +9,7 @@
     "sections": [
       {
         "type": "paragraph",
-        "content": "<a href=\"https://assets/uploads/images/What-is-niet-tap.svg\" target=\"_blank\" rel=\"noopener noreferrer\">test</a>",
+        "content": "<a href=\"../preview.html?src=assets%2Fuploads%2Fimages%2FWhat-is-niet-tap.svg&name=What-is-niet-tap.svg\" target=\"_blank\" rel=\"noopener noreferrer\">test</a>",
         "author": "",
         "caption": "",
         "files": []
@@ -50,7 +50,7 @@
       },
       {
         "type": "paragraph",
-        "content": "Yet less than two months later, on April 14, 2025, the newly installed Board of Managers, acting on the superintendent’s recommendation, approved districtwide implementation of <a href=\"https://assets/uploads/images/What-is-niet-tap.svg\" target=\"_blank\" rel=\"noopener noreferrer\">NIET/TAP</a>, an outside-developed school-improvement model—<b>before a new district Needs Assessment announced at that same meeting had been completed</b>.",
+        "content": "Yet less than two months later, on April 14, 2025, the newly installed Board of Managers, acting on the superintendent’s recommendation, approved districtwide implementation of <a href=\"../preview.html?src=assets%2Fuploads%2Fimages%2FWhat-is-niet-tap.svg&name=What-is-niet-tap.svg\" target=\"_blank\" rel=\"noopener noreferrer\">NIET/TAP</a>, an outside-developed school-improvement model—<b>before a new district Needs Assessment announced at that same meeting had been completed</b>.",
         "author": "",
         "caption": "",
         "files": []

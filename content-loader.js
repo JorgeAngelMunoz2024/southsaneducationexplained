@@ -116,9 +116,19 @@ function renderSectionsForLoader(sections) {
                 const icon = file.category === 'videos' ? '🎥' : '📄';
                 html += `<div class="section-attachments-display" style="margin: 1.5rem 0;">\n    <div class="attachment-item" style="display: flex; align-items: center; padding: 1rem; background: #f8f8f8; border-radius: 8px;">\n        <span class="attachment-icon" style="font-size: 2rem; margin-right: 1rem;">${icon}</span>\n        <div class="attachment-content" style="flex: 1;">\n            <p style="margin: 0; font-weight: 600;">${escapeHtmlLoader(description)}</p>\n            <p style="font-size: 0.85rem; color: var(--muted-teak); margin: 0.25rem 0;">${escapeHtmlLoader(file.name)} (${file.size})</p>\n`;
                 if (file.data) {
-                    const linkAttrs = isPreviewableFile(file) ? 'target="_blank" rel="noopener noreferrer"' : `download="${escapeHtmlLoader(file.name)}"`;
-                    const linkLabel = isPreviewableFile(file) ? '👁️ View' : '📥 Download';
-                    html += `            <a href="${file.data}" ${linkAttrs} style="color: var(--primary-teak); text-decoration: none; font-size: 0.9rem;">${linkLabel}</a>\n`;
+                    const previewable = isPreviewableFile(file);
+                    // Data URLs can be too large for a query string, so stash it in
+                    // sessionStorage and hand preview.html a lookup key instead.
+                    let href = file.data;
+                    let linkAttrs = `download="${escapeHtmlLoader(file.name)}"`;
+                    if (previewable) {
+                        const key = `previewFile_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                        sessionStorage.setItem(key, file.data);
+                        href = `preview.html?key=${encodeURIComponent(key)}&name=${encodeURIComponent(file.name)}`;
+                        linkAttrs = 'target="_blank" rel="noopener noreferrer"';
+                    }
+                    const linkLabel = previewable ? '👁️ View' : '📥 Download';
+                    html += `            <a href="${href}" ${linkAttrs} style="color: var(--primary-teak); text-decoration: none; font-size: 0.9rem;">${linkLabel}</a>\n`;
                 }
                 html += `        </div>\n    </div>\n</div>\n\n`;
             }
@@ -190,10 +200,12 @@ function loadSourcesTree() {
             html += `            <li class="file-tree-folder"><span class="file-tree-label">📁 <a href="${entry.link}">${escapeHtmlLoader(entry.title)}</a></span>\n                <ul>\n`;
             entry.files.forEach(file => {
                 const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
-                const path = `assets/uploads/${file.category}/${file.name}`;
+                const relPath = `assets/uploads/${file.category}/${file.name}`;
                 const desc = file.description ? ` — ${escapeHtmlLoader(file.description)}` : '';
-                const linkAttrs = isPreviewableFile(file) ? 'target="_blank" rel="noopener noreferrer"' : 'download';
-                html += `                    <li class="file-tree-file"><a href="${path}" ${linkAttrs}>${icon} ${escapeHtmlLoader(file.name)}</a>${desc} <span class="file-size">(${file.size})</span></li>\n`;
+                const previewable = isPreviewableFile(file);
+                const href = previewable ? `preview.html?src=${encodeURIComponent(relPath)}&name=${encodeURIComponent(file.name)}` : relPath;
+                const linkAttrs = previewable ? 'target="_blank" rel="noopener noreferrer"' : 'download';
+                html += `                    <li class="file-tree-file"><a href="${href}" ${linkAttrs}>${icon} ${escapeHtmlLoader(file.name)}</a>${desc} <span class="file-size">(${file.size})</span></li>\n`;
             });
             html += `                </ul>\n            </li>\n`;
         });
