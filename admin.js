@@ -507,7 +507,7 @@ document.addEventListener('click', (e) => {
         const selection = window.getSelection();
         const savedRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
 
-        const url = (prompt('Enter the URL for this link:', 'https://') || '').trim();
+        const url = (prompt('Enter the URL for this link:', 'https://southsaneducationexplained.org/') || '').trim();
         if (!url) return;
         if (!isSafeHref(url)) {
             alert('That URL is not allowed.');
