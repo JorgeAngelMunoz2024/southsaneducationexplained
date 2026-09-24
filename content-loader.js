@@ -43,8 +43,14 @@ function escapeHtmlLoader(text) {
 
 // Images, videos, and PDFs render natively in a browser tab; anything else has
 // no in-browser viewer, so the browser will still just download those.
+// Extension checks are a fallback for files that were mis-categorized as
+// "documents" (some browsers report no MIME type for .svg uploads) — must
+// stay in sync with the copy of this function in admin.js.
+const IMAGE_EXTENSIONS = /\.(svg|png|jpe?g|gif|webp|bmp|ico|avif)$/i;
+const VIDEO_EXTENSIONS = /\.(mp4|webm|ogg|mov|avi|mkv)$/i;
 function isPreviewableFile(file) {
-    return file.category === 'images' || file.category === 'videos' || /\.pdf$/i.test(file.name);
+    return file.category === 'images' || file.category === 'videos'
+        || /\.pdf$/i.test(file.name) || IMAGE_EXTENSIONS.test(file.name) || VIDEO_EXTENSIONS.test(file.name);
 }
 
 // Render an array of sections (with inline embedded file data) into HTML

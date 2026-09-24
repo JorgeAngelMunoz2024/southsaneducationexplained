@@ -790,9 +790,15 @@ function refreshSectionFiles(sectionId) {
     });
 }
 
+// Browsers often fail to report a MIME type for certain extensions (most
+// notably .svg on some OSes/browsers), leaving file.type empty — fall back to
+// the filename extension so those uploads still get classified correctly.
+const IMAGE_EXTENSIONS = /\.(svg|png|jpe?g|gif|webp|bmp|ico|avif)$/i;
+const VIDEO_EXTENSIONS = /\.(mp4|webm|ogg|mov|avi|mkv)$/i;
+
 function getFileCategory(mimeType, fileName) {
-    if (mimeType.startsWith('image/')) return 'images';
-    if (mimeType.startsWith('video/')) return 'videos';
+    if (mimeType.startsWith('image/') || IMAGE_EXTENSIONS.test(fileName)) return 'images';
+    if (mimeType.startsWith('video/') || VIDEO_EXTENSIONS.test(fileName)) return 'videos';
     return 'documents';
 }
 
@@ -800,7 +806,8 @@ function getFileCategory(mimeType, fileName) {
 // (docx, zip, etc.) has no in-browser viewer, so the browser will still just
 // download those — there's no way to force a "preview" for those types.
 function isPreviewableFile(file) {
-    return file.category === 'images' || file.category === 'videos' || /\.pdf$/i.test(file.name);
+    return file.category === 'images' || file.category === 'videos'
+        || /\.pdf$/i.test(file.name) || IMAGE_EXTENSIONS.test(file.name) || VIDEO_EXTENSIONS.test(file.name);
 }
 
 function formatFileSize(bytes) {
