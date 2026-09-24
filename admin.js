@@ -2428,6 +2428,82 @@ document.getElementById('downloadSitePageBtn')?.addEventListener('click', async 
     }
 });
 
+// Manual, one-click "republish everything currently saved" — a recovery path for when an
+// individual form's auto-publish silently failed (bad connection, a since-fixed bug, etc.)
+// and the admin just wants to force every page back in sync with what's saved locally.
+// Note: it republishes generated HTML/manifests from what's in localStorage, which is enough
+// to fix text/entries — but a file attachment that never actually reached GitHub can't be
+// recovered this way, since the raw upload bytes are intentionally never kept in localStorage
+// (see stripFileData); that file has to be re-attached from the original on disk and re-saved.
+async function publishEverythingToGitHub() {
+    const results = [];
+
+    try {
+        const articles = JSON.parse(localStorage.getItem('articles') || '[]');
+        await publishManifest('articles', 'Republish: articles manifest');
+        for (const article of articles) {
+            await githubPutFile(`articles/${article.slug}.html`, generateArticleHTML(article), `Republish article: ${article.title}`);
+        }
+        await githubPutFile('articles.html', generateArticlesListPageHTML(), 'Republish: articles list');
+        results.push(`✅ Articles (${articles.length})`);
+    } catch (err) {
+        results.push(`❌ Articles: ${err.message}`);
+    }
+
+    for (const key of Object.keys(COLLECTIONS)) {
+        const cfg = COLLECTIONS[key];
+        try {
+            await publishManifest(cfg.storageKey, `Republish: ${cfg.pageTitle} manifest`);
+            await githubPutFile(cfg.pageFile, generateCollectionPageHTML(key), `Republish: ${cfg.pageTitle}`);
+            results.push(`✅ ${cfg.pageTitle}`);
+        } catch (err) {
+            results.push(`❌ ${cfg.pageTitle}: ${err.message}`);
+        }
+    }
+
+    try {
+        await publishManifest('sourceLibrary', 'Republish: media library manifest');
+        await githubPutFile('sources.html', generateSourcesPageHTML(), 'Republish: sources page');
+        results.push('✅ Sources');
+    } catch (err) {
+        results.push(`❌ Sources: ${err.message}`);
+    }
+
+    for (const pageFile of Object.keys(getSitePageContent())) {
+        try {
+            const html = await buildSitePageHTML(pageFile);
+            await githubPutFile(pageFile, html, `Republish: page text (${pageFile})`);
+            results.push(`✅ ${pageFile}`);
+        } catch (err) {
+            results.push(`❌ ${pageFile}: ${err.message}`);
+        }
+    }
+
+    return results;
+}
+
+document.getElementById('publishAllBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('publishAllBtn');
+    const msgEl = document.getElementById('publishAllMessage');
+    if (!isGithubConnected()) {
+        alert('Connect GitHub first (top-right "🔗 Connect GitHub" button) before publishing.');
+        return;
+    }
+    btn.disabled = true;
+    btn.textContent = '⏳ Publishing…';
+    if (msgEl) { msgEl.style.display = 'block'; msgEl.style.color = 'var(--muted-teak)'; msgEl.textContent = 'Publishing everything to GitHub…'; }
+
+    const results = await publishEverythingToGitHub();
+
+    btn.disabled = false;
+    btn.textContent = '🚀 Publish All to GitHub';
+    if (msgEl) {
+        msgEl.textContent = results.join('\n');
+        msgEl.style.color = results.some(r => r.startsWith('❌')) ? '#b3261e' : 'var(--muted-teak)';
+        setTimeout(() => { msgEl.textContent = ''; msgEl.style.display = 'none'; }, 20000);
+    }
+});
+
 // Make functions globally accessible
 window.removeSection = removeSection;
 window.updateSectionContent = updateSectionContent;
