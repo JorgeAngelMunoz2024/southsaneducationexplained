@@ -36,25 +36,39 @@
     .preview-bar a:hover { background: #2f6a53; }
     .preview-stage {
         flex: 1;
+        min-height: 0;
         display: flex;
         align-items: center;
         justify-content: center;
         overflow: auto;
         padding: 1.5rem;
     }
+    /* Fixed-size frame + object-fit:contain guarantees the media is scaled
+       down/up uniformly (letterboxed, never stretched) regardless of its
+       intrinsic aspect ratio. */
+    .preview-stage .media-frame {
+        width: 100%;
+        height: 85vh;
+        max-width: 95vw;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
     .preview-stage img,
     .preview-stage video {
-        max-width: 100%;
-        max-height: 85vh;
-        width: auto;
-        height: auto;
+        display: block;
+        width: 100%;
+        height: 100%;
         object-fit: contain;
+        object-position: center;
         background: #fff;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
         cursor: zoom-in;
     }
     .preview-stage img.zoomed,
     .preview-stage video.zoomed {
+        width: auto;
+        height: auto;
         max-width: none;
         max-height: none;
         cursor: zoom-out;
@@ -104,18 +118,24 @@
             iframe.title = name;
             stage.appendChild(iframe);
         } else if (videoExts.includes(ext)) {
+            const frame = document.createElement('div');
+            frame.className = 'media-frame';
             const video = document.createElement('video');
             video.src = src;
             video.controls = true;
             video.addEventListener('click', () => video.classList.toggle('zoomed'));
-            stage.appendChild(video);
+            frame.appendChild(video);
+            stage.appendChild(frame);
         } else if (imageExts.includes(ext)) {
+            const frame = document.createElement('div');
+            frame.className = 'media-frame';
             const img = document.createElement('img');
             img.src = src;
             img.alt = name;
             img.title = 'Click to toggle full size';
             img.addEventListener('click', () => img.classList.toggle('zoomed'));
-            stage.appendChild(img);
+            frame.appendChild(img);
+            stage.appendChild(frame);
         } else {
             stage.innerHTML = `<p class="preview-error">Preview not available for this file type.<br><a href="${src}" download="${name}">Download instead</a></p>`;
         }
