@@ -34,6 +34,28 @@ function applySitePageOverrides() {
 }
 applySitePageOverrides();
 
+// Rewrites any same-origin link that points straight at an uploaded asset file
+// (image/PDF/video) so it opens through the scaled preview.html viewer instead
+// of the browser's native full-size viewer. This catches links built by our own
+// templates as well as ones pasted in manually via the "Add Link" text tool.
+const PREVIEWABLE_ASSET_EXTENSIONS = /\.(svg|png|jpe?g|gif|webp|bmp|ico|avif|pdf|mp4|webm|ogg|mov|avi|mkv)$/i;
+function initAssetPreviewLinks() {
+    document.querySelectorAll('a[href]').forEach(a => {
+        let url;
+        try { url = new URL(a.href, location.href); } catch { return; }
+        if (url.hostname !== location.hostname) return;
+        if (!/^\/assets\/uploads\//.test(url.pathname)) return;
+        if (!PREVIEWABLE_ASSET_EXTENSIONS.test(url.pathname)) return;
+
+        const name = decodeURIComponent(url.pathname.split('/').pop());
+        const rootRelativeSrc = url.pathname.replace(/^\//, '');
+        a.setAttribute('href', `/preview.html?src=${encodeURIComponent(rootRelativeSrc)}&name=${encodeURIComponent(name)}`);
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+    });
+}
+initAssetPreviewLinks();
+
 function escapeHtmlLoader(text) {
     if (!text) return '';
     const div = document.createElement('div');

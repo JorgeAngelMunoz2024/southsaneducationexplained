@@ -2027,6 +2027,8 @@ ${sectionsHTML}
             </div>
         </div>
     </footer>
+
+    <script src="../content-loader.js"></script>
 </body>
 </html>`;
 }
