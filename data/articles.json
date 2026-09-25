@@ -1,6 +1,6 @@
 [
   {
-    "id": 1790345506821,
+    "id": 1790345680147,
     "title": "Was There Evidence That Poor Teaching Was a Significant Problem at South San?",
     "slug": "was-there-evidence-that-poor-teaching-was-a-significant-problem-at-south-san",
     "subtitles": [
@@ -11,7 +11,7 @@
     "sections": [
       {
         "type": "paragraph",
-        "content": "<span><b>If you haven’t read Part 1, start here.</b></span>",
+        "content": "<span><b>If you haven’t read Part 1, start <a href=\"https://southsaneducationexplained.org/https://southsaneducationexplained.org/articles/was-there-evidence-that-poor-teaching-was-a-significant-problem-at-south-san.html\" target=\"_blank\" rel=\"noopener noreferrer\">here</a>.</b></span>",
         "author": "",
         "caption": "",
         "files": []
@@ -185,7 +185,7 @@
         "files": []
       }
     ],
-    "dateCreated": "2026-09-25T14:11:46.821Z"
+    "dateCreated": "2026-09-25T14:14:40.147Z"
   },
   {
     "id": 1790291966645,
