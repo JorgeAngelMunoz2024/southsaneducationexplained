@@ -46,18 +46,10 @@
       },
       {
         "type": "image-caption",
-        "content": "https://southsaneducationexplained.org/preview.html?src=assets%2Fuploads%2Fimages%2FNIet%20tap%20timeline%20Part%202.svg&name=NIet%20tap%20timeline%20Part%202.svg",
+        "content": "https://southsaneducationexplained.org/preview.html?src=assets%2Fuploads%2Fimages%2FPDF%20slide%20ss%20timeline%20part%202.png&name=PDF%20slide%20ss%20timeline%20part%202.png",
         "author": "",
         "caption": "South San’s identified needs before April 14, 2025, and the evidence publicly presented when districtwide NIET/TAP was approved. PDF attachment description:",
-        "files": [
-          {
-            "name": "PDF slide ss timeline part 2.pdf",
-            "size": "79.36 KB",
-            "type": "application/pdf",
-            "category": "documents",
-            "description": "Open the full-size timeline as PDF"
-          }
-        ]
+        "files": []
       },
       {
         "type": "heading",
@@ -193,6 +185,6 @@
         "files": []
       }
     ],
-    "dateSaved": "2026-09-25T15:07:52.285Z"
+    "dateSaved": "2026-09-25T15:24:26.173Z"
   }
 ]
