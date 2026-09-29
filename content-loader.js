@@ -56,6 +56,45 @@ function initAssetPreviewLinks() {
 }
 initAssetPreviewLinks();
 
+// Nav dropdowns (News / Who is Affected? / About) open on hover via CSS, but
+// touch devices have no hover, so a tap on the toggle opens/closes via class
+// instead; the toggle's href="#" is prevented so it doesn't jump the page.
+function initNavDropdowns() {
+    const dropdowns = document.querySelectorAll('.nav-menu li.has-dropdown');
+    dropdowns.forEach(li => {
+        const toggle = li.querySelector(':scope > .dropdown-toggle');
+        if (!toggle) return;
+        toggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isOpen = li.classList.contains('open');
+            dropdowns.forEach(other => other.classList.remove('open'));
+            li.classList.toggle('open', !isOpen);
+        });
+    });
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.nav-menu li.has-dropdown')) {
+            dropdowns.forEach(li => li.classList.remove('open'));
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') dropdowns.forEach(li => li.classList.remove('open'));
+    });
+}
+initNavDropdowns();
+
+// Collapsible "Browse by Audience" dropdowns in the Articles page sidebar
+// directory. No-ops on pages without a .articles-sidebar.
+function initTagDirectory() {
+    document.querySelectorAll('.tag-directory-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const group = btn.closest('.tag-directory-group');
+            const isOpen = group.classList.toggle('open');
+            btn.setAttribute('aria-expanded', String(isOpen));
+        });
+    });
+}
+initTagDirectory();
+
 function escapeHtmlLoader(text) {
     if (!text) return '';
     const div = document.createElement('div');

@@ -80,6 +80,15 @@
                                 <textarea id="articleExcerpt" name="excerpt" rows="3" required placeholder="Short summary for article listing"></textarea>
                             </div>
 
+                            <div class="form-group">
+                                <label>Audience Tags (optional)</label>
+                                <div class="tag-btn-group" id="articleTagGroup">
+                                    <button type="button" class="tag-toggle-btn" data-tag="parents">Parents</button>
+                                    <button type="button" class="tag-toggle-btn" data-tag="students">Students</button>
+                                    <button type="button" class="tag-toggle-btn" data-tag="teachers">Teachers</button>
+                                </div>
+                            </div>
+
                             <hr style="margin: 2rem 0; border: 1px solid #e0e0e0;">
                             
                             <!-- Article Sections -->
@@ -289,7 +298,7 @@
                     <article class="content-card">
                         <h2>Edit Page Text</h2>
                         <p style="color: var(--muted-teak); font-size: 0.9rem; margin-bottom: 1.5rem;">
-                            Choose a page below to view and edit every piece of hardcoded text on it - headings, paragraphs, list items, form labels, buttons, and the footer. Changes are saved locally so you can preview them; download the updated page and upload it to GitHub to publish.
+                            Choose a page below to view and edit every piece of hardcoded text on it - headings, paragraphs, list items, form labels, buttons, and the footer. Each section also has its own alignment (left/center/right), space-below, and paragraph line-spacing controls so you can preview the layout before publishing. Changes are saved locally so you can preview them; download the updated page and upload it to GitHub to publish.
                         </p>
 
                         <div class="form-group">
@@ -303,6 +312,9 @@
                                 <option value="questions-and-responses.html">Questions and Responses</option>
                                 <option value="educational-lingo.html">Educational Lingo</option>
                                 <option value="sources.html">Sources</option>
+                                <option value="student-hub.html">Student Hub</option>
+                                <option value="teacher-corner.html">Teacher Corner</option>
+                                <option value="parents-community.html">Parents &amp; Community</option>
                             </select>
                         </div>
 

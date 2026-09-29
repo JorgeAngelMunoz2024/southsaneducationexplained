@@ -559,7 +559,9 @@ addSectionBtn.addEventListener('click', () => {
     addSection();
 });
 
-function addSection(containerId = 'articleSections') {
+// insertAfterEl, when given, places the new section immediately after it (for "insert between
+// sections") instead of appending to the end of the container.
+function addSection(containerId = 'articleSections', insertAfterEl = null) {
     sectionCounter++;
     const sectionId = `section-${sectionCounter}`;
     const container = document.getElementById(containerId);
@@ -570,8 +572,11 @@ function addSection(containerId = 'articleSections') {
     sectionDiv.dataset.files = JSON.stringify([]);
     sectionDiv.innerHTML = `
         <div class="section-header">
-            <span class="section-number">Section ${sectionCounter}</span>
-            <button type="button" class="remove-section-btn" onclick="removeSection('${sectionId}')">Remove</button>
+            <span class="section-number">Section</span>
+            <div class="section-header-actions">
+                <button type="button" class="insert-section-btn" onclick="insertSectionAfter('${sectionId}')">+ Insert Section Below</button>
+                <button type="button" class="remove-section-btn" onclick="removeSection('${sectionId}')">Remove</button>
+            </div>
         </div>
         
         <div class="section-type-selector">
@@ -605,15 +610,41 @@ function addSection(containerId = 'articleSections') {
         </div>
     `;
     
-    container.appendChild(sectionDiv);
+    if (insertAfterEl && insertAfterEl.parentNode === container) {
+        insertAfterEl.insertAdjacentElement('afterend', sectionDiv);
+    } else {
+        container.appendChild(sectionDiv);
+    }
+    renumberSections(containerId);
     return sectionId;
+}
+
+// Inserts a brand new section directly below an existing one, so admins can add content
+// between two sections instead of only ever appending to the end of the list.
+function insertSectionAfter(sectionId) {
+    const sectionEl = document.getElementById(sectionId);
+    if (!sectionEl || !sectionEl.parentNode) return;
+    addSection(sectionEl.parentNode.id, sectionEl);
 }
 
 function removeSection(sectionId) {
     const section = document.getElementById(sectionId);
     if (section) {
+        const containerId = section.parentNode?.id;
         section.remove();
+        if (containerId) renumberSections(containerId);
     }
+}
+
+// Section labels reflect current DOM order, not creation order, so inserting/removing a
+// section in the middle keeps every "Section N" label correct.
+function renumberSections(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.querySelectorAll(':scope > .article-section').forEach((sectionEl, index) => {
+        const numberEl = sectionEl.querySelector('.section-number');
+        if (numberEl) numberEl.textContent = `Section ${index + 1}`;
+    });
 }
 
 function updateSectionContent(sectionId, type) {
@@ -947,14 +978,17 @@ function renderSectionsForPublish(sections, pathPrefix) {
                 }
                 html += `                </blockquote>\n\n`;
                 break;
-            case 'image-caption':
+            case 'image-caption': {
+                // Only prefix relative paths; leave absolute/external URLs (http(s)://, //, data:, /...) untouched.
+                const imgSrc = /^(https?:)?\/\/|^data:|^\//.test(section.content) ? section.content : `${pathPrefix}${section.content}`;
                 html += `                <figure>\n`;
-                html += `                    <img src="${pathPrefix}${escapeHtml(section.content)}" alt="${escapeHtml(section.caption || 'Image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
+                html += `                    <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(section.caption || 'Image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
                 if (section.caption) {
                     html += `                    <figcaption style="text-align: center; margin-top: 0.5rem; color: var(--muted-teak); font-size: 0.9rem;">${escapeHtml(section.caption)}</figcaption>\n`;
                 }
                 html += `                </figure>\n\n`;
                 break;
+            }
         }
 
         if (section.files && section.files.length > 0) {
@@ -985,16 +1019,36 @@ function renderSectionsForPublish(sections, pathPrefix) {
 function collectionNavHTML(activeKey, pathPrefix) {
     const link = (file, label, key) =>
         `<li><a href="${pathPrefix}${file}"${key === activeKey ? ' class="active"' : ''}>${label}</a></li>`;
+    const toggle = (label, keys) =>
+        `<a href="#" class="dropdown-toggle${keys.includes(activeKey) ? ' active' : ''}">${label}</a>`;
     return `
                 <ul class="nav-menu">
                     ${link('index.html', 'Home', null)}
                     ${link('articles.html', 'Articles', 'articles')}
-                    ${link('board-meetings.html', 'Board Meetings', 'boardMeetings')}
-                    ${link('questions-and-responses.html', 'Questions and Responses', 'qa')}
-                    ${link('educational-lingo.html', 'Educational Lingo', 'lingo')}
-                    ${link('sources.html', 'Sources', 'sources')}
-                    ${link('about.html', 'About', null)}
-                    ${link('contact.html', 'Contact', null)}
+                    <li class="has-dropdown">
+                        ${toggle('News', ['boardMeetings', 'qa'])}
+                        <ul class="dropdown-menu">
+                            ${link('board-meetings.html', 'Board Meetings', 'boardMeetings')}
+                            ${link('questions-and-responses.html', 'Questions and Responses', 'qa')}
+                        </ul>
+                    </li>
+                    <li class="has-dropdown">
+                        ${toggle('Who is Affected?', ['studentHub', 'teacherCorner', 'parentsCommunity'])}
+                        <ul class="dropdown-menu">
+                            ${link('student-hub.html', 'Student Hub', 'studentHub')}
+                            ${link('teacher-corner.html', 'Teacher Corner', 'teacherCorner')}
+                            ${link('parents-community.html', 'Parents &amp; Community', 'parentsCommunity')}
+                        </ul>
+                    </li>
+                    <li class="has-dropdown">
+                        ${toggle('About', ['lingo', 'sources', 'about', 'contact'])}
+                        <ul class="dropdown-menu">
+                            ${link('educational-lingo.html', 'Educational Lingo', 'lingo')}
+                            ${link('sources.html', 'Sources', 'sources')}
+                            ${link('about.html', 'About', 'about')}
+                            ${link('contact.html', 'Contact', 'contact')}
+                        </ul>
+                    </li>
                 </ul>`;
 }
 
@@ -2000,17 +2054,7 @@ function generateArticleHTML(article) {
     <header>
         <nav class="navbar">
             <div class="nav-container">
-                <div class="site-title">South San Education Explained</div>
-                <ul class="nav-menu">
-                    <li><a href="../index.html">Home</a></li>
-                    <li><a href="../articles.html" class="active">Articles</a></li>
-                    <li><a href="../board-meetings.html">Board Meetings</a></li>
-                    <li><a href="../questions-and-responses.html">Questions and Responses</a></li>
-                    <li><a href="../educational-lingo.html">Educational Lingo</a></li>
-                    <li><a href="../sources.html">Sources</a></li>
-                    <li><a href="../about.html">About</a></li>
-                    <li><a href="../contact.html">Contact</a></li>
-                </ul>
+                <div class="site-title">South San Education Explained</div>${collectionNavHTML('articles', '../')}
             </div>
         </nav>
     </header>

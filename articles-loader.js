@@ -1,5 +1,12 @@
 // Load articles dynamically from localStorage, without erasing the statically
 // published articles already present in the page's HTML.
+const ARTICLE_TAG_LABELS = { parents: 'Parents', students: 'Students', teachers: 'Teachers' };
+
+function renderArticleTagsHTML(tags) {
+    if (!tags || tags.length === 0) return '';
+    return `<div class="article-tags">${tags.map(tag => `<span class="article-tag article-tag-${tag}">${escapeHtml(ARTICLE_TAG_LABELS[tag] || tag)}</span>`).join('')}</div>`;
+}
+
 function loadArticlesFromStorage() {
     const articlesContainer = document.getElementById('articlesContainer');
     const articles = JSON.parse(localStorage.getItem('articles') || '[]');
@@ -19,6 +26,7 @@ function loadArticlesFromStorage() {
             <h2>${article.title}</h2>
             ${(article.subtitles || []).map(subtitle => `<p class="article-subtitle">${subtitle}</p>`).join('\n            ')}
             <p class="article-meta">Published: ${article.meta}</p>
+            ${renderArticleTagsHTML(article.tags)}
             <p>${article.excerpt}</p>
             <a href="#" onclick="viewArticleFromStorage('${article.slug}'); return false;" class="read-more">Read More →</a>
         </div>
@@ -86,6 +94,7 @@ async function viewArticleFromStorage(slug) {
             <h1>${article.title}</h1>
             ${(article.subtitles || []).map(subtitle => `<p class="article-subtitle">${subtitle}</p>`).join('\n            ')}
             <p class="article-meta">Published: ${article.meta}</p>
+            ${renderArticleTagsHTML(article.tags)}
             <div class="article-content">
                 ${articleContent}
             </div>

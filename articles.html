@@ -14,19 +14,71 @@
                 <ul class="nav-menu">
                     <li><a href="index.html">Home</a></li>
                     <li><a href="articles.html" class="active">Articles</a></li>
-                    <li><a href="board-meetings.html">Board Meetings</a></li>
-                    <li><a href="questions-and-responses.html">Questions and Responses</a></li>
-                    <li><a href="educational-lingo.html">Educational Lingo</a></li>
-                    <li><a href="sources.html">Sources</a></li>
-                    <li><a href="about.html">About</a></li>
-                    <li><a href="contact.html">Contact</a></li>
+                    <li class="has-dropdown">
+                        <a href="#" class="dropdown-toggle">News</a>
+                        <ul class="dropdown-menu">
+                            <li><a href="board-meetings.html">Board Meetings</a></li>
+                            <li><a href="questions-and-responses.html">Questions and Responses</a></li>
+                        </ul>
+                    </li>
+                    <li class="has-dropdown">
+                        <a href="#" class="dropdown-toggle">Who is Affected?</a>
+                        <ul class="dropdown-menu">
+                            <li><a href="student-hub.html">Student Hub</a></li>
+                            <li><a href="teacher-corner.html">Teacher Corner</a></li>
+                            <li><a href="parents-community.html">Parents &amp; Community</a></li>
+                        </ul>
+                    </li>
+                    <li class="has-dropdown">
+                        <a href="#" class="dropdown-toggle">About</a>
+                        <ul class="dropdown-menu">
+                            <li><a href="educational-lingo.html">Educational Lingo</a></li>
+                            <li><a href="sources.html">Sources</a></li>
+                            <li><a href="about.html">About</a></li>
+                            <li><a href="contact.html">Contact</a></li>
+                        </ul>
+                    </li>
                 </ul>
             </div>
         </nav>
     </header>
 
     <main>
-        <article class="content-card">
+        <div class="articles-layout">
+            <aside class="articles-sidebar">
+                <h3 class="articles-sidebar-title">Browse by Audience</h3>
+                <div class="tag-directory-group">
+                    <button type="button" class="tag-directory-toggle" aria-expanded="false">
+                        <span class="tag-directory-label article-tag article-tag-parents">Parents</span>
+                        <span class="tag-directory-count">0</span>
+                        <span class="tag-directory-arrow" aria-hidden="true">▸</span>
+                    </button>
+                    <ul class="tag-directory-list">
+                        <li class="tag-directory-empty">No articles yet</li>
+                    </ul>
+                </div>
+                <div class="tag-directory-group">
+                    <button type="button" class="tag-directory-toggle" aria-expanded="false">
+                        <span class="tag-directory-label article-tag article-tag-students">Students</span>
+                        <span class="tag-directory-count">0</span>
+                        <span class="tag-directory-arrow" aria-hidden="true">▸</span>
+                    </button>
+                    <ul class="tag-directory-list">
+                        <li class="tag-directory-empty">No articles yet</li>
+                    </ul>
+                </div>
+                <div class="tag-directory-group">
+                    <button type="button" class="tag-directory-toggle" aria-expanded="false">
+                        <span class="tag-directory-label article-tag article-tag-teachers">Teachers</span>
+                        <span class="tag-directory-count">0</span>
+                        <span class="tag-directory-arrow" aria-hidden="true">▸</span>
+                    </button>
+                    <ul class="tag-directory-list">
+                        <li class="tag-directory-empty">No articles yet</li>
+                    </ul>
+                </div>
+            </aside>
+            <article class="content-card articles-main">
             <h1>Articles</h1>
             <p data-editable="articles-intro">Explore our collection of articles covering various educational topics in South San.</p>
             <div id="articlesContainer">
@@ -55,7 +107,8 @@
                     <a href="articles/where-is-the-root-cause-analysis.html" class="read-more">Read More →</a>
                 </div>
             </div>
-        </article>
+            </article>
+        </div>
     </main>
 
     <footer>

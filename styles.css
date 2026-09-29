@@ -74,9 +74,58 @@ body {
     border-bottom: 2px solid var(--soft-gold);
 }
 
+/* Nav Dropdowns (News / Who is Affected? / About) */
+.nav-menu li.has-dropdown {
+    position: relative;
+}
+
+.dropdown-toggle::after {
+    content: '\25BE';
+    margin-left: 0.35em;
+    font-size: 0.7em;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 230px;
+    margin: 0;
+    padding: 0.5rem 0;
+    list-style: none;
+    background-color: var(--deep-navy);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+    z-index: 200;
+}
+
+.nav-menu li.has-dropdown:hover .dropdown-menu,
+.nav-menu li.has-dropdown.open .dropdown-menu,
+.nav-menu li.has-dropdown:focus-within .dropdown-menu {
+    display: block;
+}
+
+.dropdown-menu li {
+    width: 100%;
+}
+
+.dropdown-menu a {
+    display: block;
+    padding: 0.6rem 1.25rem;
+    white-space: nowrap;
+    border-bottom: none;
+}
+
+.dropdown-menu a:hover,
+.dropdown-menu a.active {
+    border-bottom: none;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
 /* Main Content */
 main {
-    max-width: 800px;
+    width: 92%;
+    max-width: 1100px;
     margin: 2rem auto;
     padding: 0 1.5rem;
     flex: 1;
@@ -118,9 +167,6 @@ h3 {
 p {
     margin-bottom: 1rem;
     text-align: center;
-    max-width: 700px;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 a {
@@ -199,6 +245,141 @@ a:hover {
     font-size: 1.15rem;
     font-weight: 500;
     margin-bottom: 0.5rem;
+}
+
+/* Article Audience Tags */
+.article-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.75rem;
+}
+
+.article-tag {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--white);
+    letter-spacing: 0.02em;
+}
+
+.article-tag-parents {
+    background-color: var(--soft-gold);
+}
+
+.article-tag-students {
+    background-color: var(--muted-teak);
+}
+
+.article-tag-teachers {
+    background-color: var(--deep-navy);
+}
+
+/* Articles Sidebar Directory (collapsible browse-by-audience dropdowns) */
+.articles-layout {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+}
+
+.articles-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.articles-sidebar {
+    flex: 0 0 260px;
+    position: sticky;
+    top: 1.5rem;
+    background-color: var(--warm-light-gray);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.articles-sidebar-title {
+    text-align: left;
+    font-size: 1.1rem;
+    color: var(--deep-navy);
+    margin-bottom: 1rem;
+}
+
+.tag-directory-group {
+    border-bottom: 1px solid #e0dcd0;
+}
+
+.tag-directory-group:last-child {
+    border-bottom: none;
+}
+
+.tag-directory-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    padding: 0.75rem 0;
+    cursor: pointer;
+    text-align: left;
+}
+
+.tag-directory-toggle .tag-directory-label {
+    flex: 0 0 auto;
+}
+
+.tag-directory-count {
+    margin-left: auto;
+    color: var(--muted-teak);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.tag-directory-arrow {
+    color: var(--muted-teak);
+    transition: transform 0.2s ease;
+}
+
+.tag-directory-group.open .tag-directory-arrow {
+    transform: rotate(90deg);
+}
+
+.tag-directory-list {
+    list-style: none;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease;
+}
+
+.tag-directory-group.open .tag-directory-list {
+    max-height: 1000px;
+    padding-bottom: 0.75rem;
+}
+
+.tag-directory-list li {
+    margin: 0;
+}
+
+.tag-directory-list li a {
+    display: block;
+    padding: 0.4rem 0.5rem;
+    color: var(--charcoal);
+    text-decoration: none;
+    font-size: 0.9rem;
+    border-radius: 4px;
+}
+
+.tag-directory-list li a:hover {
+    background-color: var(--white);
+    color: var(--deep-navy);
+}
+
+.tag-directory-empty {
+    padding: 0.4rem 0.5rem;
+    color: var(--muted-teak);
+    font-size: 0.85rem;
+    font-style: italic;
 }
 
 .read-more {
@@ -365,6 +546,14 @@ footer {
         justify-content: center;
     }
     
+    .dropdown-menu {
+        position: static;
+        box-shadow: none;
+        background-color: rgba(0, 0, 0, 0.15);
+        min-width: 0;
+        text-align: center;
+    }
+    
     h1 {
         font-size: 2rem;
     }
@@ -383,6 +572,16 @@ footer {
     
     main {
         margin: 1rem auto;
+    }
+    
+    .articles-layout {
+        flex-direction: column;
+    }
+    
+    .articles-sidebar {
+        flex: 1 1 auto;
+        width: 100%;
+        position: static;
     }
 }
 
