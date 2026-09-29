@@ -167,7 +167,7 @@ function generateArticleContent(article) {
                 break;
             case 'image-caption':
                 contentHTML += `<figure>\n`;
-                contentHTML += `    <img src="${escapeHtml(section.content)}" alt="${escapeHtml(section.caption || 'Article image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
+                contentHTML += `    <img src="${escapeHtml(resolveImageSrc(section.content))}" alt="${escapeHtml(section.caption || 'Article image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
                 if (section.caption) {
                     contentHTML += `    <figcaption style="text-align: center; margin-top: 0.5rem; color: var(--muted-teak); font-size: 0.9rem;">${escapeHtml(section.caption)}</figcaption>\n`;
                 }
@@ -236,6 +236,20 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// The file-preview "Copy Link" button hands out preview.html?src=... viewer
+// links (meant for hyperlinks), but admins sometimes paste one into an
+// image-caption section's URL field expecting the image itself. Unwrap those
+// back into the raw asset path so <img src> actually works.
+function resolveImageSrc(content) {
+    try {
+        const url = new URL(content, location.href);
+        if (/\/preview\.html$/i.test(url.pathname) && url.searchParams.has('src')) {
+            return url.searchParams.get('src');
+        }
+    } catch (e) { /* not a URL, use content as-is */ }
+    return content;
 }
 
 // Load articles when page loads

@@ -102,6 +102,20 @@ function escapeHtmlLoader(text) {
     return div.innerHTML;
 }
 
+// The file-preview "Copy Link" button hands out preview.html?src=... viewer
+// links (meant for hyperlinks), but admins sometimes paste one into an
+// image-caption section's URL field expecting the image itself. Unwrap those
+// back into the raw asset path so <img src> actually works.
+function resolveImageSrc(content) {
+    try {
+        const url = new URL(content, location.href);
+        if (/\/preview\.html$/i.test(url.pathname) && url.searchParams.has('src')) {
+            return url.searchParams.get('src');
+        }
+    } catch (e) { /* not a URL, use content as-is */ }
+    return content;
+}
+
 // Images, videos, and PDFs render natively in a browser tab; anything else has
 // no in-browser viewer, so the browser will still just download those.
 // Extension checks are a fallback for files that were mis-categorized as
@@ -152,7 +166,7 @@ function renderSectionsForLoader(sections) {
                 html += `</blockquote>\n\n`;
                 break;
             case 'image-caption':
-                html += `<figure>\n    <img src="${escapeHtmlLoader(section.content)}" alt="${escapeHtmlLoader(section.caption || 'Image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
+                html += `<figure>\n    <img src="${escapeHtmlLoader(resolveImageSrc(section.content))}" alt="${escapeHtmlLoader(section.caption || 'Image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
                 if (section.caption) {
                     html += `    <figcaption style="text-align: center; margin-top: 0.5rem; color: var(--muted-teak); font-size: 0.9rem;">${escapeHtmlLoader(section.caption)}</figcaption>\n`;
                 }

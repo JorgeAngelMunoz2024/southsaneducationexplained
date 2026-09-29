@@ -60,7 +60,7 @@
 }
 
 .admin-container {
-    max-width: 900px;
+    width: calc(100% - 4in);
     margin: 2rem auto;
     padding: 0 1.5rem;
 }
@@ -423,7 +423,7 @@ div.section-content[contenteditable]:empty::before {
 }
 
 .insert-section-btn:hover {
-    background-color: var(--primary-teak);
+    background-color: var(--deep-navy);
 }
 
 .remove-section-btn {
@@ -794,6 +794,7 @@ footer {
     }
 
     .admin-container {
+        width: calc(100% - 0.5in);
         padding: 0 1rem;
     }
 
@@ -934,7 +935,7 @@ footer {
 }
 
 .article-content .attachment-item a {
-    color: var(--primary-teak);
+    color: var(--muted-teak);
     text-decoration: none;
     font-weight: 600;
     transition: color 0.2s ease;

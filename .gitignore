@@ -1,0 +1,10 @@
+# Local zip downloads and their extracted loose images/files.
+# Real site assets get uploaded separately via the admin panel into assets/uploads/,
+# so anything left loose at the repo root is just leftover scratch material.
+/*.zip
+/*.jpg
+/*.jpeg
+/*.png
+/*.gif
+/*.svg
+/*.webp

@@ -393,6 +393,28 @@ function renderSubtitlesHTML(subtitles, indent = '            ') {
 
 document.getElementById('addArticleSubtitleBtn')?.addEventListener('click', () => addSubtitleField('articleSubtitles'));
 
+// Audience tag multi-select toggle buttons (Parents/Students/Teachers)
+function getSelectedTags(groupId) {
+    const group = document.getElementById(groupId);
+    if (!group) return [];
+    return Array.from(group.querySelectorAll('.tag-toggle-btn.active')).map(btn => btn.dataset.tag);
+}
+
+function setSelectedTags(groupId, tags = []) {
+    const group = document.getElementById(groupId);
+    if (!group) return;
+    group.querySelectorAll('.tag-toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', tags.includes(btn.dataset.tag));
+    });
+}
+
+// Delegated listener so it keeps working even if tag buttons are re-rendered
+document.getElementById('articleTagGroup')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tag-toggle-btn');
+    if (!btn) return;
+    btn.classList.toggle('active');
+});
+
 // ===================================================================
 // Rich Text Editing (Bold/Italic/Underline/Link) for section content
 // ===================================================================
@@ -937,12 +959,146 @@ function setPageFieldValue(pageFile, key, value) {
     localStorage.setItem(SITE_PAGE_CONTENT_KEY, JSON.stringify(all));
 }
 
+// Per-field layout overrides (text alignment, spacing below the section, paragraph
+// line spacing) - kept separate from the text content itself so a field with no
+// text edits can still carry a layout-only override, and vice versa.
+const SITE_PAGE_STYLES_KEY = 'sitePageStyles';
+
+function getSitePageStyles() {
+    return JSON.parse(localStorage.getItem(SITE_PAGE_STYLES_KEY) || '{}');
+}
+
+function getPageFieldStyle(pageFile, key) {
+    const all = getSitePageStyles();
+    return (all[pageFile] && all[pageFile][key]) || {};
+}
+
+// 'center' (align) and empty spacing/line-height mean "use the site's default CSS",
+// so they're stored as absent rather than as an explicit value - that also lets
+// picking "Default"/"Center" again clear a previously-set override.
+function setPageFieldStyle(pageFile, key, style) {
+    const all = getSitePageStyles();
+    const cleaned = {};
+    if (style.align && style.align !== 'center') cleaned.align = style.align;
+    if (style.sectionSpacing) cleaned.sectionSpacing = style.sectionSpacing;
+    if (style.lineHeight) cleaned.lineHeight = style.lineHeight;
+
+    if (!all[pageFile]) all[pageFile] = {};
+    if (Object.keys(cleaned).length === 0) {
+        delete all[pageFile][key];
+        if (Object.keys(all[pageFile]).length === 0) delete all[pageFile];
+    } else {
+        all[pageFile][key] = cleaned;
+    }
+    localStorage.setItem(SITE_PAGE_STYLES_KEY, JSON.stringify(all));
+}
+
+// Inline-style string used to preview a field's layout override inside the admin editor
+function fieldStyleAttr(style) {
+    const parts = [];
+    if (style.align) parts.push(`text-align:${style.align}`);
+    if (style.sectionSpacing) parts.push(`margin-bottom:${style.sectionSpacing}`);
+    if (style.lineHeight) parts.push(`line-height:${style.lineHeight}`);
+    return parts.join(';');
+}
+
+// Applies an admin-chosen layout override as inline CSS on the real page element so
+// it survives publishing (overrides the site-wide centered/default CSS on that tag)
+function applyFieldStyleOverride(el, style) {
+    if (!style) return;
+    if (style.align) el.style.textAlign = style.align;
+    if (style.sectionSpacing) el.style.marginBottom = style.sectionSpacing;
+    if (style.lineHeight) el.style.lineHeight = style.lineHeight;
+}
+
+const SECTION_SPACING_OPTIONS = [
+    { value: '', label: 'Default' },
+    { value: '0.5rem', label: 'Compact' },
+    { value: '1.5rem', label: 'Roomy' },
+    { value: '2.5rem', label: 'Extra roomy' },
+    { value: '4rem', label: 'Very spacious' }
+];
+
+const LINE_HEIGHT_OPTIONS = [
+    { value: '', label: 'Default' },
+    { value: '1.2', label: 'Tight' },
+    { value: '1.9', label: 'Relaxed' },
+    { value: '2.3', label: 'Loose' }
+];
+
+function pageFieldStyleControlsHTML(style) {
+    const align = style.align || 'center';
+    const alignBtn = (value, iconLabel) =>
+        `<button type="button" class="align-btn${align === value ? ' active' : ''}" data-align="${value}">${iconLabel}</button>`;
+    const optionsHTML = (options, current, className) => options.map(opt =>
+        `<option value="${opt.value}"${(current || '') === opt.value ? ' selected' : ''}>${opt.label}</option>`
+    ).join('');
+
+    return `
+                <div class="page-field-style-controls">
+                    <div class="style-control-group">
+                        <span class="style-control-label">Alignment</span>
+                        <div class="align-btn-group" role="group" aria-label="Text alignment">
+                            ${alignBtn('left', '⬅ Left')}
+                            ${alignBtn('center', '⬛ Center')}
+                            ${alignBtn('right', '➡ Right')}
+                        </div>
+                    </div>
+                    <div class="style-control-group">
+                        <label>Space below section</label>
+                        <select class="section-spacing-select">${optionsHTML(SECTION_SPACING_OPTIONS, style.sectionSpacing)}</select>
+                    </div>
+                    <div class="style-control-group">
+                        <label>Paragraph line spacing</label>
+                        <select class="line-height-select">${optionsHTML(LINE_HEIGHT_OPTIONS, style.lineHeight)}</select>
+                    </div>
+                </div>`;
+}
+
+// Live-updates the contenteditable preview as the admin toggles alignment/spacing controls
+function wireSitePageStyleControls(container) {
+    container.querySelectorAll('[data-page-field]').forEach(fieldEl => {
+        const contentEl = fieldEl.querySelector('.section-content');
+        if (!contentEl) return;
+
+        fieldEl.querySelectorAll('.align-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                fieldEl.querySelectorAll('.align-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                contentEl.style.textAlign = btn.dataset.align;
+            });
+        });
+
+        fieldEl.querySelector('.section-spacing-select')?.addEventListener('change', (e) => {
+            contentEl.style.marginBottom = e.target.value;
+        });
+
+        fieldEl.querySelector('.line-height-select')?.addEventListener('change', (e) => {
+            contentEl.style.lineHeight = e.target.value;
+        });
+    });
+}
+
 function getCollectionEntries(key) {
     return JSON.parse(localStorage.getItem(COLLECTIONS[key].storageKey) || '[]');
 }
 
 function saveCollectionEntries(key, entries) {
     safeLocalStorageSet(COLLECTIONS[key].storageKey, JSON.stringify(entries));
+}
+
+// The file-preview "Copy Link" button hands out preview.html?src=... viewer
+// links (meant for hyperlinks), but admins sometimes paste one into an
+// image-caption section's URL field expecting the image itself. Unwrap those
+// back into the raw asset path so <img src> actually works.
+function resolveImageSrc(content) {
+    try {
+        const url = new URL(content, 'https://placeholder.invalid/');
+        if (/\/preview\.html$/i.test(url.pathname) && url.searchParams.has('src')) {
+            return url.searchParams.get('src');
+        }
+    } catch (e) { /* not a URL, use content as-is */ }
+    return content;
 }
 
 // Shared section-array -> published HTML (used for downloadable static pages)
@@ -979,8 +1135,9 @@ function renderSectionsForPublish(sections, pathPrefix) {
                 html += `                </blockquote>\n\n`;
                 break;
             case 'image-caption': {
+                const resolved = resolveImageSrc(section.content);
                 // Only prefix relative paths; leave absolute/external URLs (http(s)://, //, data:, /...) untouched.
-                const imgSrc = /^(https?:)?\/\/|^data:|^\//.test(section.content) ? section.content : `${pathPrefix}${section.content}`;
+                const imgSrc = /^(https?:)?\/\/|^data:|^\//.test(resolved) ? resolved : `${pathPrefix}${resolved}`;
                 html += `                <figure>\n`;
                 html += `                    <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(section.caption || 'Image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
                 if (section.caption) {
@@ -1724,6 +1881,7 @@ articleForm.addEventListener('submit', async (e) => {
         subtitles,
         meta,
         excerpt,
+        tags: getSelectedTags('articleTagGroup'),
         sections: stripFileData(sections),
         dateCreated: new Date().toISOString()
     };
@@ -1772,6 +1930,7 @@ articleForm.addEventListener('submit', async (e) => {
     articleForm.reset();
     urlPreview.textContent = '(auto-generated from title)';
     document.getElementById('articleSubtitles').innerHTML = '';
+    setSelectedTags('articleTagGroup', []);
     articleSections.innerHTML = '';
     sectionCounter = 0;
     addSection(); // Add one initial section
@@ -1895,6 +2054,7 @@ function saveCurrentArticleAsDraft() {
         subtitles,
         meta,
         excerpt,
+        tags: getSelectedTags('articleTagGroup'),
         sections,
         dateSaved: new Date().toISOString()
     };
@@ -1926,6 +2086,7 @@ function resetArticleForm() {
 
     urlPreview.textContent = '(auto-generated from title)';
     document.getElementById('articleSubtitles').innerHTML = '';
+    setSelectedTags('articleTagGroup', []);
     articleSections.innerHTML = '';
     sectionCounter = 0;
     addSection();
@@ -1959,6 +2120,7 @@ function editDraft(id) {
     setSubtitles('articleSubtitles', draft.subtitles || []);
     document.getElementById('articleMeta').value = draft.meta || '';
     document.getElementById('articleExcerpt').value = draft.excerpt || '';
+    setSelectedTags('articleTagGroup', draft.tags || []);
 
     articleSections.innerHTML = '';
     sectionCounter = 0;
@@ -2174,6 +2336,7 @@ function editArticle(id) {
     setSubtitles('articleSubtitles', article.subtitles || []);
     document.getElementById('articleMeta').value = article.meta || '';
     document.getElementById('articleExcerpt').value = article.excerpt;
+    setSelectedTags('articleTagGroup', article.tags || []);
     
     // Clear existing sections
     articleSections.innerHTML = '';
@@ -2306,7 +2469,7 @@ function generateArticleContentFromSections(article) {
                 break;
             case 'image-caption':
                 contentHTML += `<figure>\n`;
-                contentHTML += `    <img src="${escapeHtml(section.content)}" alt="${escapeHtml(section.caption || 'Article image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
+                contentHTML += `    <img src="${escapeHtml(resolveImageSrc(section.content))}" alt="${escapeHtml(section.caption || 'Article image')}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
                 if (section.caption) {
                     contentHTML += `    <figcaption style="text-align: center; margin-top: 0.5rem; color: var(--muted-teak); font-size: 0.9rem;">${escapeHtml(section.caption)}</figcaption>\n`;
                 }
@@ -2441,14 +2604,18 @@ async function loadSitePageFields(pageFile) {
         const key = editableElementKey(el, index);
         const label = describeEditableElement(el);
         const currentHTML = overrides[key] !== undefined ? overrides[key] : el.innerHTML.trim();
+        const style = getPageFieldStyle(pageFile, key);
         return `
             <div class="form-group" data-page-field data-field-key="${escapeHtml(key)}">
                 <label>${escapeHtml(label)}</label>
+                ${pageFieldStyleControlsHTML(style)}
                 ${richTextToolbarHTML()}
-                <div class="section-content" contenteditable="true">${currentHTML}</div>
+                <div class="section-content" contenteditable="true" style="${fieldStyleAttr(style)}">${currentHTML}</div>
             </div>
         `;
     }).join('');
+
+    wireSitePageStyleControls(container);
 }
 
 function saveSitePageFields(pageFile) {
@@ -2458,15 +2625,24 @@ function saveSitePageFields(pageFile) {
         const key = fieldEl.dataset.fieldKey;
         const contentEl = fieldEl.querySelector('.section-content');
         setPageFieldValue(pageFile, key, sanitizeRichHTML(contentEl.innerHTML));
+
+        const activeAlignBtn = fieldEl.querySelector('.align-btn.active');
+        setPageFieldStyle(pageFile, key, {
+            align: activeAlignBtn?.dataset.align,
+            sectionSpacing: fieldEl.querySelector('.section-spacing-select')?.value,
+            lineHeight: fieldEl.querySelector('.line-height-select')?.value
+        });
     });
 }
 
 async function buildSitePageHTML(pageFile) {
     const doc = await fetchPageDocument(pageFile);
     const overrides = getSitePageContent()[pageFile] || {};
+    const styleOverrides = getSitePageStyles()[pageFile] || {};
     collectPageEditableElements(doc).forEach((el, index) => {
         const key = editableElementKey(el, index);
         if (overrides[key] !== undefined) el.innerHTML = overrides[key];
+        applyFieldStyleOverride(el, styleOverrides[key]);
     });
     return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
 }
@@ -2565,7 +2741,8 @@ async function publishEverythingToGitHub() {
         results.push(`❌ Sources: ${err.message}`);
     }
 
-    for (const pageFile of Object.keys(getSitePageContent())) {
+    const sitePagesToRepublish = new Set([...Object.keys(getSitePageContent()), ...Object.keys(getSitePageStyles())]);
+    for (const pageFile of sitePagesToRepublish) {
         try {
             const html = await buildSitePageHTML(pageFile);
             await githubPutFile(pageFile, html, `Republish: page text (${pageFile})`);
