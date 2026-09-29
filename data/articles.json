@@ -1,6 +1,6 @@
 [
   {
-    "id": 1790711449869,
+    "id": 1790711592678,
     "title": "Was There Evidence That Poor Teaching Was a Significant Problem at South San?",
     "slug": "was-there-evidence-that-poor-teaching-was-a-significant-problem-at-south-san",
     "subtitles": [
@@ -45,14 +45,15 @@
         "content": "South San NIET/TAP Timeline",
         "author": "",
         "caption": "",
-        "files": []
-      },
-      {
-        "type": "image-caption",
-        "content": "https://southsaneducationexplained.org/preview.html?src=assets%2Fuploads%2Fimages%2FPDF%20slide%20ss%20timeline%20part%202.png&name=PDF%20slide%20ss%20timeline%20part%202.png",
-        "author": "",
-        "caption": "South San’s identified needs before April 14, 2025, and the evidence publicly presented when districtwide NIET/TAP was approved. PDF attachment description:",
-        "files": []
+        "files": [
+          {
+            "name": "PDF slide ss timeline part 2.png",
+            "size": "72.22 KB",
+            "type": "image/png",
+            "category": "images",
+            "description": "South San’s identified needs before April 14, 2025, and the evidence publicly presented when districtwide NIET/TAP was approved. PDF attachment description:"
+          }
+        ]
       },
       {
         "type": "heading",
@@ -160,7 +161,7 @@
         "files": []
       }
     ],
-    "dateCreated": "2026-09-29T19:50:49.869Z"
+    "dateCreated": "2026-09-29T19:53:12.678Z"
   },
   {
     "id": 1790456916730,
