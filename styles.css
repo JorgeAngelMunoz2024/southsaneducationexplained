@@ -74,7 +74,7 @@ body {
     border-bottom: 2px solid var(--soft-gold);
 }
 
-/* Nav Dropdowns (News / Who is Affected? / About) */
+/* Nav Dropdowns (News / Audience / About) */
 .nav-menu li.has-dropdown {
     position: relative;
 }
@@ -276,16 +276,25 @@ a:hover {
     background-color: var(--deep-navy);
 }
 
-/* Articles Sidebar Directory (collapsible browse-by-audience dropdowns) */
+/* Articles Sidebar Directory (collapsible browse-by-audience tag filter) */
 .articles-layout {
     display: flex;
     align-items: flex-start;
     gap: 2rem;
 }
 
+/* Extra breathing room around the article list itself, separate from the
+   sitewide `main` margin and the sidebar's own width. */
 .articles-main {
     flex: 1;
     min-width: 0;
+    padding: 0 3in;
+}
+
+@media (max-width: 1100px) {
+    .articles-main {
+        padding: 0 1in;
+    }
 }
 
 .articles-sidebar {
@@ -295,37 +304,82 @@ a:hover {
     background-color: var(--warm-light-gray);
     border-radius: 8px;
     padding: 1.25rem;
+    transition: flex-basis 0.2s ease, padding 0.2s ease;
+}
+
+.articles-sidebar.collapsed {
+    flex-basis: 48px;
+    padding: 1.25rem 0.5rem;
+    overflow: hidden;
+}
+
+.articles-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
 }
 
 .articles-sidebar-title {
     text-align: left;
     font-size: 1.1rem;
     color: var(--deep-navy);
-    margin-bottom: 1rem;
+    white-space: nowrap;
 }
 
-.tag-directory-group {
-    border-bottom: 1px solid #e0dcd0;
+.articles-sidebar.collapsed .articles-sidebar-title,
+.articles-sidebar.collapsed .articles-sidebar-body {
+    display: none;
 }
 
-.tag-directory-group:last-child {
-    border-bottom: none;
+.sidebar-collapse-btn {
+    flex: 0 0 auto;
+    background: none;
+    border: 1px solid var(--muted-teak);
+    border-radius: 4px;
+    color: var(--deep-navy);
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1;
+    padding: 0.35rem 0.55rem;
 }
 
-.tag-directory-toggle {
+.sidebar-collapse-btn:hover {
+    background-color: var(--white);
+}
+
+.tag-directory-item {
     width: 100%;
     display: flex;
     align-items: center;
     gap: 0.5rem;
     background: none;
     border: none;
-    padding: 0.75rem 0;
+    border-bottom: 1px solid #e0dcd0;
+    padding: 0.75rem 0.25rem;
     cursor: pointer;
     text-align: left;
+    color: var(--charcoal);
+    font-size: 0.95rem;
+    border-radius: 4px;
 }
 
-.tag-directory-toggle .tag-directory-label {
-    flex: 0 0 auto;
+.tag-directory-item:last-child {
+    border-bottom: none;
+}
+
+.tag-directory-item:hover {
+    background-color: var(--white);
+}
+
+.tag-directory-item.active {
+    background-color: var(--deep-navy);
+    color: var(--white);
+}
+
+.tag-directory-item.active .tag-directory-count {
+    color: var(--soft-gold);
 }
 
 .tag-directory-count {
@@ -335,50 +389,11 @@ a:hover {
     font-weight: 600;
 }
 
-.tag-directory-arrow {
+.articles-empty-message {
+    padding: 1rem 0;
     color: var(--muted-teak);
-    transition: transform 0.2s ease;
-}
-
-.tag-directory-group.open .tag-directory-arrow {
-    transform: rotate(90deg);
-}
-
-.tag-directory-list {
-    list-style: none;
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.25s ease;
-}
-
-.tag-directory-group.open .tag-directory-list {
-    max-height: 1000px;
-    padding-bottom: 0.75rem;
-}
-
-.tag-directory-list li {
-    margin: 0;
-}
-
-.tag-directory-list li a {
-    display: block;
-    padding: 0.4rem 0.5rem;
-    color: var(--charcoal);
-    text-decoration: none;
-    font-size: 0.9rem;
-    border-radius: 4px;
-}
-
-.tag-directory-list li a:hover {
-    background-color: var(--white);
-    color: var(--deep-navy);
-}
-
-.tag-directory-empty {
-    padding: 0.4rem 0.5rem;
-    color: var(--muted-teak);
-    font-size: 0.85rem;
     font-style: italic;
+    text-align: left;
 }
 
 .read-more {
@@ -570,7 +585,7 @@ footer {
     }
     
     main {
-        width: calc(100% - 0.5in);
+        width: calc(100% - 0.0625in);
         margin: 1rem auto;
     }
     
@@ -582,6 +597,10 @@ footer {
         flex: 1 1 auto;
         width: 100%;
         position: static;
+    }
+    
+    .articles-main {
+        padding: 0;
     }
 }
 

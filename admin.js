@@ -609,7 +609,7 @@ function addSection(containerId = 'articleSections', insertAfterEl = null) {
                 <option value="list">Bulleted List</option>
                 <option value="numbered-list">Numbered List</option>
                 <option value="quote">Quote</option>
-                <option value="image-caption">Image with Caption</option>
+                ${containerId === 'articleSections' ? '' : '<option value="image-caption">Image with Caption</option>'}
             </select>
         </div>
         
@@ -1149,25 +1149,44 @@ function renderSectionsForPublish(sections, pathPrefix) {
         }
 
         if (section.files && section.files.length > 0) {
-            html += `                <div class="section-attachments-display">\n`;
-            section.files.forEach(file => {
-                const icon = file.category === 'images' ? '🖼️' : file.category === 'videos' ? '🎥' : '📄';
-                const relPath = `assets/uploads/${file.category}/${encodeGithubPath(file.name)}`;
-                const path = `${pathPrefix}${relPath}`;
+            // Images attached as files (not via the "Image URL" field) render inline
+            // like image-caption sections, instead of as a download/view attachment card.
+            const imageFiles = section.files.filter(file => file.category === 'images');
+            const otherFiles = section.files.filter(file => file.category !== 'images');
+
+            imageFiles.forEach(file => {
+                const path = `${pathPrefix}assets/uploads/images/${encodeGithubPath(file.name)}`;
                 const description = file.description || file.name;
-                const previewable = isPreviewableFile(file);
-                const href = previewable ? `${pathPrefix}preview.html?src=${encodeURIComponent(relPath)}&name=${encodeURIComponent(file.name)}` : path;
-                const linkAttrs = previewable ? 'target="_blank" rel="noopener noreferrer"' : 'download';
-                const linkLabel = previewable ? '👁️ View' : '📥 Download';
-                html += `                    <div class="attachment-item">\n`;
-                html += `                        <span class="attachment-icon">${icon}</span>\n`;
-                html += `                        <div class="attachment-content">\n`;
-                html += `                            <p>${escapeHtml(description)}</p>\n`;
-                html += `                            <a href="${href}" ${linkAttrs} class="attachment-download">${linkLabel} ${escapeHtml(file.name)} (${file.size})</a>\n`;
-                html += `                        </div>\n`;
-                html += `                    </div>\n`;
+                html += `                <figure style="margin: 2rem 0;">\n`;
+                html += `                    <img src="${escapeHtml(path)}" alt="${escapeHtml(description)}" style="max-width: 100%; height: auto; border-radius: 8px;">\n`;
+                if (description !== file.name) {
+                    html += `                    <figcaption style="text-align: center; margin-top: 0.5rem; color: var(--muted-teak); font-size: 0.9rem;">${escapeHtml(description)}</figcaption>\n`;
+                }
+                html += `                    <figcaption style="text-align: center; margin-top: 0.25rem;"><a href="${escapeHtml(path)}" download="${escapeHtml(file.name)}" style="font-size: 0.85rem; color: var(--primary-teak);">📥 Download ${escapeHtml(file.name)} (${file.size})</a></figcaption>\n`;
+                html += `                </figure>\n\n`;
             });
-            html += `                </div>\n\n`;
+
+            if (otherFiles.length > 0) {
+                html += `                <div class="section-attachments-display">\n`;
+                otherFiles.forEach(file => {
+                    const icon = file.category === 'videos' ? '🎥' : '📄';
+                    const relPath = `assets/uploads/${file.category}/${encodeGithubPath(file.name)}`;
+                    const path = `${pathPrefix}${relPath}`;
+                    const description = file.description || file.name;
+                    const previewable = isPreviewableFile(file);
+                    const href = previewable ? `${pathPrefix}preview.html?src=${encodeURIComponent(relPath)}&name=${encodeURIComponent(file.name)}` : path;
+                    const linkAttrs = previewable ? 'target="_blank" rel="noopener noreferrer"' : 'download';
+                    const linkLabel = previewable ? '👁️ View' : '📥 Download';
+                    html += `                    <div class="attachment-item">\n`;
+                    html += `                        <span class="attachment-icon">${icon}</span>\n`;
+                    html += `                        <div class="attachment-content">\n`;
+                    html += `                            <p>${escapeHtml(description)}</p>\n`;
+                    html += `                            <a href="${href}" ${linkAttrs} class="attachment-download">${linkLabel} ${escapeHtml(file.name)} (${file.size})</a>\n`;
+                    html += `                        </div>\n`;
+                    html += `                    </div>\n`;
+                });
+                html += `                </div>\n\n`;
+            }
         }
     });
     return html;
@@ -1190,7 +1209,7 @@ function collectionNavHTML(activeKey, pathPrefix) {
                         </ul>
                     </li>
                     <li class="has-dropdown">
-                        ${toggle('Who is Affected?', ['studentHub', 'teacherCorner', 'parentsCommunity'])}
+                        ${toggle('Audience', ['studentHub', 'teacherCorner', 'parentsCommunity'])}
                         <ul class="dropdown-menu">
                             ${link('student-hub.html', 'Student Hub', 'studentHub')}
                             ${link('teacher-corner.html', 'Teacher Corner', 'teacherCorner')}
@@ -2249,14 +2268,52 @@ ${sectionsHTML}
 </html>`;
 }
 
+// Tag directory: powers both the static tag pills on each article tile and
+// the collapsible "Browse by Audience" sidebar/filter buttons on articles.html.
+const ARTICLE_TAG_LABELS = { parents: 'Parents', students: 'Students', teachers: 'Teachers' };
+const ARTICLE_TAG_ORDER = ['parents', 'students', 'teachers'];
+
+function renderArticleTagsHTML(tags) {
+    if (!tags || tags.length === 0) return '';
+    return `<div class="article-tags">${tags.map(tag => `<span class="article-tag article-tag-${tag}">${escapeHtml(ARTICLE_TAG_LABELS[tag] || tag)}</span>`).join('')}</div>`;
+}
+
+// Regenerates the sidebar directory: an "All Articles" button plus one button
+// per tag (with live counts) that content-loader.js's initTagDirectory() uses
+// to filter the tiles in #articlesContainer by their data-tags attribute.
+function buildTagDirectoryHTML(articlesArr) {
+    const tagButtons = ARTICLE_TAG_ORDER.map(tag => {
+        const count = articlesArr.filter(a => (a.tags || []).includes(tag)).length;
+        return `
+                <button type="button" class="tag-directory-item" data-tag="${tag}">
+                    <span class="tag-directory-label">${ARTICLE_TAG_LABELS[tag]}</span>
+                    <span class="tag-directory-count">${count}</span>
+                </button>`;
+    }).join('');
+
+    return `<aside class="articles-sidebar" id="articlesSidebar">
+                <div class="articles-sidebar-header">
+                    <h3 class="articles-sidebar-title">Browse by Audience</h3>
+                    <button type="button" class="sidebar-collapse-btn" aria-expanded="true" title="Collapse directory">«</button>
+                </div>
+                <div class="articles-sidebar-body">
+                    <button type="button" class="tag-directory-item active" data-tag="all">
+                        <span class="tag-directory-label">All Articles</span>
+                        <span class="tag-directory-count">${articlesArr.length}</span>
+                    </button>${tagButtons}
+                </div>
+            </aside>`;
+}
+
 // Regenerates the full articles.html listing page (tiles for every published
 // article) so it can be committed straight to the repo on every publish/edit/delete.
 function generateArticlesListPageHTML() {
     const articlesArr = JSON.parse(localStorage.getItem('articles') || '[]');
     const tilesHTML = articlesArr.map(article => `
-                <div class="article-preview">
+                <div class="article-preview" data-tags="${(article.tags || []).join(' ')}">
                     <h2><a href="articles/${article.slug}.html" style="color: var(--deep-navy); text-decoration: none;">${escapeHtml(article.title)}</a></h2>
 ${renderSubtitlesHTML(article.subtitles, '                    ')}                    <p class="article-meta">Published: ${escapeHtml(article.meta || '')}</p>
+                    ${renderArticleTagsHTML(article.tags)}
                     <p>${escapeHtml(article.excerpt)}</p>
                     <a href="articles/${article.slug}.html" class="read-more">Read More →</a>
                 </div>`).join('\n');
@@ -2282,8 +2339,14 @@ ${renderSubtitlesHTML(article.subtitles, '                    ')}               
         <article class="content-card">
             <h1>Articles</h1>
             <p data-editable="articles-intro">${getPageFieldValue('articles.html', 'articles-intro', 'Explore our collection of articles covering various educational topics in South San.')}</p>
-            <div id="articlesContainer">
+            <div class="articles-layout">
+                ${buildTagDirectoryHTML(articlesArr)}
+                <div class="articles-main">
+                    <div id="articlesContainer">
 ${tilesHTML}
+                    </div>
+                    <p class="articles-empty-message" id="articlesEmptyMessage" style="display: none;">No articles in this directory yet.</p>
+                </div>
             </div>
         </article>
     </main>
@@ -2490,7 +2553,7 @@ function generateArticleContentFromSections(article) {
                     if (description !== file.name) {
                         contentHTML += `    <figcaption style="text-align: center; margin-top: 0.75rem; color: var(--muted-teak); font-size: 0.9rem;">${escapeHtml(description)}</figcaption>\n`;
                     }
-                    contentHTML += `    <p style="text-align: center; font-size: 0.85rem; color: var(--muted-teak); margin-top: 0.5rem;">${escapeHtml(file.name)} (${file.size})</p>\n`;
+                    contentHTML += `    <p style="text-align: center; font-size: 0.85rem; color: var(--muted-teak); margin-top: 0.5rem;"><a href="${file.data}" download="${escapeHtml(file.name)}" style="color: var(--primary-teak); text-decoration: none;">📥 Download ${escapeHtml(file.name)} (${file.size})</a></p>\n`;
                     contentHTML += `</figure>\n\n`;
                 } else if (file.type && file.type.includes('pdf') && file.data) {
                     // Display PDF viewer

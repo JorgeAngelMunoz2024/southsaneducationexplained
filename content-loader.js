@@ -56,7 +56,7 @@ function initAssetPreviewLinks() {
 }
 initAssetPreviewLinks();
 
-// Nav dropdowns (News / Who is Affected? / About) open on hover via CSS, but
+// Nav dropdowns (News / Audience / About) open on hover via CSS, but
 // touch devices have no hover, so a tap on the toggle opens/closes via class
 // instead; the toggle's href="#" is prevented so it doesn't jump the page.
 function initNavDropdowns() {
@@ -82,14 +82,38 @@ function initNavDropdowns() {
 }
 initNavDropdowns();
 
-// Collapsible "Browse by Audience" dropdowns in the Articles page sidebar
-// directory. No-ops on pages without a .articles-sidebar.
+// "Browse by Audience" sidebar directory on articles.html: clicking a tag
+// button filters the article tiles in #articlesContainer by their
+// data-tags attribute, and the header button collapses the whole sidebar
+// into the left margin. No-ops on pages without a .articles-sidebar.
 function initTagDirectory() {
-    document.querySelectorAll('.tag-directory-toggle').forEach(btn => {
+    const sidebar = document.querySelector('.articles-sidebar');
+    if (!sidebar) return;
+
+    const collapseBtn = sidebar.querySelector('.sidebar-collapse-btn');
+    if (collapseBtn) {
+        collapseBtn.addEventListener('click', () => {
+            const collapsed = sidebar.classList.toggle('collapsed');
+            collapseBtn.setAttribute('aria-expanded', String(!collapsed));
+            collapseBtn.textContent = collapsed ? '»' : '«';
+        });
+    }
+
+    const tiles = Array.from(document.querySelectorAll('#articlesContainer .article-preview'));
+    const emptyMessage = document.getElementById('articlesEmptyMessage');
+    sidebar.querySelectorAll('.tag-directory-item').forEach(btn => {
         btn.addEventListener('click', () => {
-            const group = btn.closest('.tag-directory-group');
-            const isOpen = group.classList.toggle('open');
-            btn.setAttribute('aria-expanded', String(isOpen));
+            sidebar.querySelectorAll('.tag-directory-item').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const tag = btn.dataset.tag;
+            let visibleCount = 0;
+            tiles.forEach(tile => {
+                const tags = (tile.dataset.tags || '').split(' ').filter(Boolean);
+                const show = tag === 'all' || tags.includes(tag);
+                tile.style.display = show ? '' : 'none';
+                if (show) visibleCount++;
+            });
+            if (emptyMessage) emptyMessage.style.display = visibleCount === 0 ? '' : 'none';
         });
     });
 }
