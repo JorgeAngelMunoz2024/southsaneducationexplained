@@ -1413,6 +1413,7 @@ function buildPreviewPageHTML({ title, subtitles, metaHTML, contentHTML, activeN
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>${escapeHtml(title)} - South San Education Explained</title>
+    <base href="${location.origin}/">
     ${cssText ? `<style>${cssText}</style>` : '<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="admin-styles.css">'}
 </head>
 <body>
@@ -2546,14 +2547,17 @@ function generateArticleContentFromSections(article) {
                 const description = file.description || file.name;
                 
                 // Display based on file type
-                if (file.category === 'images' && file.data) {
-                    // Display image inline
+                if (file.category === 'images') {
+                    // file.data (raw base64) is stripped from storage before persisting, so
+                    // fall back to the real published asset path (same one renderSectionsForPublish
+                    // writes on the live site) instead of silently degrading to a download card.
+                    const imgSrc = file.data || `assets/uploads/images/${encodeGithubPath(file.name)}`;
                     contentHTML += `<figure style="margin: 2rem 0;">\n`;
-                    contentHTML += `    <img src="${file.data}" alt="${escapeHtml(description)}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">\n`;
+                    contentHTML += `    <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(description)}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">\n`;
                     if (description !== file.name) {
                         contentHTML += `    <figcaption style="text-align: center; margin-top: 0.75rem; color: var(--muted-teak); font-size: 0.9rem;">${escapeHtml(description)}</figcaption>\n`;
                     }
-                    contentHTML += `    <p style="text-align: center; font-size: 0.85rem; color: var(--muted-teak); margin-top: 0.5rem;"><a href="${file.data}" download="${escapeHtml(file.name)}" style="color: var(--primary-teak); text-decoration: none;">📥 Download ${escapeHtml(file.name)} (${file.size})</a></p>\n`;
+                    contentHTML += `    <p style="text-align: center; font-size: 0.85rem; color: var(--muted-teak); margin-top: 0.5rem;"><a href="${escapeHtml(imgSrc)}" download="${escapeHtml(file.name)}" style="color: var(--primary-teak); text-decoration: none;">📥 Download ${escapeHtml(file.name)} (${file.size})</a></p>\n`;
                     contentHTML += `</figure>\n\n`;
                 } else if (file.type && file.type.includes('pdf') && file.data) {
                     // Display PDF viewer
