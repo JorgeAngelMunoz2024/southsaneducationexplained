@@ -432,6 +432,11 @@ function richTextToolbarHTML() {
                         <button type="button" class="rt-btn" data-cmd="underline" title="Underline"><u>U</u></button>
                         <button type="button" class="rt-btn rt-link-btn" data-cmd="createLink" title="Highlight text to add a link" disabled>🔗 Add Link</button>
                         <button type="button" class="rt-btn" data-cmd="unlink" title="Remove Link">🔗✕ Remove Link</button>
+                        <span class="rt-toolbar-divider"></span>
+                        <button type="button" class="rt-btn" data-cmd="insertUnorderedList" title="Bulleted List">• List</button>
+                        <button type="button" class="rt-btn" data-cmd="insertOrderedList" title="Numbered List">1. List</button>
+                        <button type="button" class="rt-btn" data-cmd="outdent" title="Decrease list nesting">⇤ Outdent</button>
+                        <button type="button" class="rt-btn" data-cmd="indent" title="Nest this list item under the one above it">⇥ Nest List</button>
                     </div>`;
 }
 
@@ -444,7 +449,7 @@ function isSafeHref(href) {
     return true; // relative path, anchor, etc.
 }
 
-const ALLOWED_RICH_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'A', 'BR', 'SPAN']);
+const ALLOWED_RICH_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'A', 'BR', 'SPAN', 'UL', 'OL', 'LI']);
 
 // Strip any tags/attributes not in the allow-list before this HTML is stored or published
 function sanitizeRichHTML(html) {
@@ -563,7 +568,7 @@ document.addEventListener('selectionchange', () => {
     const toolbar = editable.closest('.form-group')?.querySelector('.rich-text-toolbar');
     if (!toolbar) return;
 
-    ['bold', 'italic', 'underline'].forEach(cmd => {
+    ['bold', 'italic', 'underline', 'insertUnorderedList', 'insertOrderedList'].forEach(cmd => {
         const btn = toolbar.querySelector(`.rt-btn[data-cmd="${cmd}"]`);
         if (btn && document.queryCommandState(cmd)) {
             btn.classList.add('active');
@@ -1198,7 +1203,11 @@ function collectionNavHTML(activeKey, pathPrefix) {
     const toggle = (label, keys) =>
         `<a href="#" class="dropdown-toggle${keys.includes(activeKey) ? ' active' : ''}">${label}</a>`;
     return `
-                <ul class="nav-menu">
+                <button class="nav-toggle" id="navToggle" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navMenu">
+                    <span></span><span></span><span></span>
+                </button>
+                <div class="nav-overlay" id="navOverlay"></div>
+                <ul class="nav-menu" id="navMenu">
                     ${link('index.html', 'Home', null)}
                     ${link('articles.html', 'Articles', 'articles')}
                     <li class="has-dropdown">
@@ -1967,6 +1976,12 @@ articleForm.addEventListener('submit', async (e) => {
 // Save article to localStorage
 function saveArticle(article) {
     let articles = JSON.parse(localStorage.getItem('articles') || '[]');
+    // Replace any existing article with the same slug (or id), not just the one the
+    // editingId flow explicitly deleted — otherwise publishing a title that collides with
+    // an already-published article (without going through the "Edit" button first) adds a
+    // second entry instead of replacing the original, even though the generated HTML file
+    // (same slug) gets correctly overwritten on disk.
+    articles = articles.filter(a => a.id !== article.id && a.slug !== article.slug);
     articles.unshift(article); // Add to beginning
     safeLocalStorageSet('articles', JSON.stringify(articles));
 }

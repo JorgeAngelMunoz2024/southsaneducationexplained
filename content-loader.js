@@ -82,6 +82,46 @@ function initNavDropdowns() {
 }
 initNavDropdowns();
 
+// Mobile hamburger menu: #navToggle slides #navMenu in as an off-canvas
+// sidebar (CSS handles this only under the 768px breakpoint) with a
+// backdrop (#navOverlay) that closes it on tap, same as Escape/resize-to-desktop.
+function initMobileNav() {
+    const toggle = document.getElementById('navToggle');
+    const menu = document.getElementById('navMenu');
+    const overlay = document.getElementById('navOverlay');
+    if (!toggle || !menu || !overlay) return;
+
+    const closeMenu = () => {
+        menu.classList.remove('open');
+        overlay.classList.remove('open');
+        toggle.setAttribute('aria-expanded', 'false');
+        document.body.classList.remove('nav-open');
+    };
+    const openMenu = () => {
+        menu.classList.add('open');
+        overlay.classList.add('open');
+        toggle.setAttribute('aria-expanded', 'true');
+        document.body.classList.add('nav-open');
+    };
+
+    toggle.addEventListener('click', () => {
+        if (menu.classList.contains('open')) closeMenu(); else openMenu();
+    });
+    overlay.addEventListener('click', closeMenu);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeMenu();
+    });
+    // A real navigation link (not a dropdown toggle, which only expands a submenu)
+    // should close the sidebar instead of leaving it open on the next page.
+    menu.querySelectorAll('a:not(.dropdown-toggle)').forEach(a => {
+        a.addEventListener('click', closeMenu);
+    });
+    window.addEventListener('resize', () => {
+        if (window.innerWidth > 768) closeMenu();
+    });
+}
+initMobileNav();
+
 // "Browse by Audience" sidebar directory on articles.html: clicking a tag
 // button filters the article tiles in #articlesContainer by their
 // data-tags attribute, and the header button collapses the whole sidebar
