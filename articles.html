@@ -11,7 +11,11 @@
         <nav class="navbar">
             <div class="nav-container">
                 <div class="site-title">South San Education Explained</div>
-                <ul class="nav-menu">
+                <button class="nav-toggle" id="navToggle" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="navMenu">
+                    <span></span><span></span><span></span>
+                </button>
+                <div class="nav-overlay" id="navOverlay"></div>
+                <ul class="nav-menu" id="navMenu">
                     <li><a href="index.html">Home</a></li>
                     <li><a href="articles.html" class="active">Articles</a></li>
                     <li class="has-dropdown">
@@ -56,7 +60,7 @@
                 <div class="articles-sidebar-body">
                     <button type="button" class="tag-directory-item active" data-tag="all">
                         <span class="tag-directory-label">All Articles</span>
-                        <span class="tag-directory-count">6</span>
+                        <span class="tag-directory-count">5</span>
                     </button>
                 <button type="button" class="tag-directory-item" data-tag="parents">
                     <span class="tag-directory-label">Parents</span>
@@ -74,6 +78,15 @@
             </aside>
                 <div class="articles-main">
                     <div id="articlesContainer">
+
+                <div class="article-preview" data-tags="">
+                    <h2><a href="articles/why-did-south-san-change-how-teachers-teach.html" style="color: var(--deep-navy); text-decoration: none;">Why Did South San Change How Teachers Teach?</a></h2>
+                    <p class="article-subtitle">Were Teachers Really What South San Needed to Fix? — Part 1</p>
+                    <p class="article-meta">Published: September 2026</p>
+                    
+                    <p>TEA replaced South San’s elected Board primarily to address longstanding governance and management problems. Yet less than two months later, the new Board moved to substantially restructure classroom instruction districtwide by approving NIET/TAP, a management-style model that shifts instructional decision-making toward district-directed expectations and monitoring. What is NIET/TAP—and was deficient teaching really a significant enough problem at South San to warrant such a rapid districtwide restructuring of classroom instruction?</p>
+                    <a href="articles/why-did-south-san-change-how-teachers-teach.html" class="read-more">Read More →</a>
+                </div>
 
                 <div class="article-preview" data-tags="">
                     <h2><a href="articles/where-is-the-root-cause-analysis.html" style="color: var(--deep-navy); text-decoration: none;">Where Is the Root-Cause Analysis?</a></h2>
@@ -94,15 +107,6 @@
                 </div>
 
                 <div class="article-preview" data-tags="">
-                    <h2><a href="articles/why-did-south-san-change-how-teachers-teach.html" style="color: var(--deep-navy); text-decoration: none;">Why Did South San Change How Teachers Teach?</a></h2>
-                    <p class="article-subtitle">Were Teachers Really What South San Needed to Fix? — Part 1</p>
-                    <p class="article-meta">Published: September 2026</p>
-                    
-                    <p>TEA replaced South San’s elected Board primarily to address longstanding governance and management problems. Yet less than two months later, the new Board moved to substantially restructure classroom instruction districtwide by approving NIET/TAP, a management-style model that shifts instructional decision-making toward district-directed expectations and monitoring. What is NIET/TAP—and was deficient teaching really a significant enough problem at South San to warrant such a rapid districtwide restructuring of classroom instruction?</p>
-                    <a href="articles/why-did-south-san-change-how-teachers-teach.html" class="read-more">Read More →</a>
-                </div>
-
-                <div class="article-preview" data-tags="">
                     <h2><a href="articles/where-is-the-root-cause-analysis.html" style="color: var(--deep-navy); text-decoration: none;">Where Is the Root-Cause Analysis?</a></h2>
                     <p class="article-subtitle">Were Teachers Really What South San Needed to Fix? — Part 3</p>
                     <p class="article-meta">Published: September 2026</p>
@@ -118,15 +122,6 @@
                     <div class="article-tags"><span class="article-tag article-tag-parents">Parents</span></div>
                     <p>Before South San’s Board of Managers approved districtwide NIET/TAP on April 14, 2025, what evidence showed that deficiencies in teaching practice were a major cause of low student performance? This article follows the timeline of what the district had identified, what was presented before the vote, what was still being studied, and what remains unclear about the evidence behind the decision.</p>
                     <a href="articles/was-there-evidence-that-poor-teaching-was-a-significant-problem-at-south-san.html" class="read-more">Read More →</a>
-                </div>
-
-                <div class="article-preview" data-tags="">
-                    <h2><a href="articles/why-did-south-san-change-how-teachers-teach.html" style="color: var(--deep-navy); text-decoration: none;">Why Did South San Change How Teachers Teach?</a></h2>
-                    <p class="article-subtitle">Were Teachers Really What South San Needed to Fix? — Part 1</p>
-                    <p class="article-meta">Published: September 2026</p>
-                    
-                    <p>TEA replaced South San’s elected Board primarily to address longstanding governance and management problems. Yet less than two months later, the new Board moved to substantially restructure classroom instruction districtwide by approving NIET/TAP, a management-style model that shifts instructional decision-making toward district-directed expectations and monitoring. What is NIET/TAP—and was deficient teaching really a significant enough problem at South San to warrant such a rapid districtwide restructuring of classroom instruction?</p>
-                    <a href="articles/why-did-south-san-change-how-teachers-teach.html" class="read-more">Read More →</a>
                 </div>
                     </div>
                     <p class="articles-empty-message" id="articlesEmptyMessage" style="display: none;">No articles in this directory yet.</p>
