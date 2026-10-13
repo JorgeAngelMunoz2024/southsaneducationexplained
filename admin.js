@@ -157,6 +157,20 @@ async function syncFromPublished() {
             const cleaned = storageKey === 'sourceLibrary'
                 ? remote.map(stripEntryData)
                 : remote.map(entry => ({ ...entry, sections: stripFileData(entry.sections) }));
+
+            // Unlike the other collections, drafts are NOT auto-published on every save —
+            // they only reach data/drafts.json via "Publish All". Overwriting localStorage
+            // with the remote list here would silently delete any draft that was saved but
+            // not yet published, so keep local-only drafts and let the remote copy win only
+            // for ids that also exist locally.
+            if (storageKey === 'articleDrafts') {
+                const localDrafts = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                const remoteIds = new Set(cleaned.map(d => d.id));
+                const localOnly = localDrafts.filter(d => !remoteIds.has(d.id));
+                safeLocalStorageSet(storageKey, JSON.stringify([...cleaned, ...localOnly]));
+                return;
+            }
+
             safeLocalStorageSet(storageKey, JSON.stringify(cleaned));
         }
     }));
