@@ -93,13 +93,27 @@
       },
       {
         "type": "paragraph",
-        "content": "<b>Early Voting: Oct. 19, 2026 - Oct. 30, 2026</b><b>Election Day: Tuesday Nov. 3</b><b><a href=\"https://www.votetexas.gov/index.html\" target=\"_blank\" rel=\"noopener noreferrer\">Where Do I Vote?</a></b>",
+        "content": "<b>Early Voting: Oct. 19, 2026 - Oct. 30, 2026</b>",
+        "author": "",
+        "caption": "",
+        "files": []
+      },
+      {
+        "type": "paragraph",
+        "content": "<b>Election Day: Tuesday Nov. 3</b>",
+        "author": "",
+        "caption": "",
+        "files": []
+      },
+      {
+        "type": "paragraph",
+        "content": "<b><a href=\"https://www.votetexas.gov/index.html\" target=\"_blank\" rel=\"noopener noreferrer\">Where Do I Vote?</a></b>",
         "author": "",
         "caption": "",
         "files": []
       }
     ],
-    "dateSaved": "2026-10-14T20:49:29.098Z"
+    "dateSaved": "2026-10-14T20:53:07.923Z"
   },
   {
     "id": 1791918566277,
