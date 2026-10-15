@@ -2274,6 +2274,7 @@ function generateArticleHTML(article) {
         <article class="content-card">
             <h1>${escapeHtml(article.title)}</h1>
 ${renderSubtitlesHTML(article.subtitles, '            ')}            <p class="article-meta">Published: ${escapeHtml(article.meta)}</p>
+            ${renderArticleTagsHTML(article.tags)}
             <div class="article-content">
 ${sectionsHTML}
             </div>
