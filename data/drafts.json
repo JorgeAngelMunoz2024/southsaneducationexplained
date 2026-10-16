@@ -1,9 +1,11 @@
 [
   {
     "id": 1792182033594,
-    "title": "You Started a Petition. Now What? - Coming Soon in the Student Hub!",
-    "slug": "you-started-a-petition-now-what-coming-soon-in-the-student-hub",
-    "subtitles": [],
+    "title": "You Started a Petition. Now What? ",
+    "slug": "you-started-a-petition-now-what",
+    "subtitles": [
+      "Coming Soon in the Student Hub!"
+    ],
     "meta": "",
     "excerpt": "",
     "tags": [
@@ -18,7 +20,7 @@
         "files": []
       }
     ],
-    "dateSaved": "2026-10-16T20:21:10.730Z"
+    "dateSaved": "2026-10-16T20:22:53.586Z"
   },
   {
     "id": 1791918566277,
