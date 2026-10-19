@@ -1,28 +1,5 @@
 [
   {
-    "id": 1792182033594,
-    "title": "You Started a Petition. Now What? ",
-    "slug": "you-started-a-petition-now-what",
-    "subtitles": [
-      "Coming Soon in the Student Hub!"
-    ],
-    "meta": "",
-    "excerpt": "",
-    "tags": [
-      "students"
-    ],
-    "sections": [
-      {
-        "type": "paragraph",
-        "content": "",
-        "author": "",
-        "caption": "",
-        "files": []
-      }
-    ],
-    "dateSaved": "2026-10-16T20:22:53.586Z"
-  },
-  {
     "id": 1791918566277,
     "title": "The Choices That Impact Your Child's Education",
     "slug": "the-choices-that-impact-your-childs-education",
@@ -32,7 +9,8 @@
     "meta": "",
     "excerpt": "Schools need consistency, but classrooms, students, and teachers are not all the same. This article examines how district decisions, teacher choices, time, and funding affect teaching and learning — and asks whether South San’s recent decisions are helping classrooms or creating new problems.",
     "tags": [
-      "parents"
+      "parents",
+      "teachers"
     ],
     "sections": [
       {
@@ -297,7 +275,30 @@
         "files": []
       }
     ],
-    "dateSaved": "2026-10-16T20:07:37.939Z"
+    "dateSaved": "2026-10-19T18:37:44.298Z"
+  },
+  {
+    "id": 1792182033594,
+    "title": "You Started a Petition. Now What? ",
+    "slug": "you-started-a-petition-now-what",
+    "subtitles": [
+      "Coming Soon in the Student Hub!"
+    ],
+    "meta": "",
+    "excerpt": "",
+    "tags": [
+      "students"
+    ],
+    "sections": [
+      {
+        "type": "paragraph",
+        "content": "",
+        "author": "",
+        "caption": "",
+        "files": []
+      }
+    ],
+    "dateSaved": "2026-10-16T20:22:53.586Z"
   },
   {
     "id": 1791675407796,
